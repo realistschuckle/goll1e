@@ -13,53 +13,15 @@ var terms set
 var nonterms set
 var prods vector.Vector
 var firsts map[string]*set
+var follows map[string]*set
 
 func init() {
 	firsts = make(map[string]*set)
-}
-
-type set vector.Vector
-
-func (self *set) Push(t tok) bool {
-	for _, s := range *self {
-		st := s.(tok)
-		if st.text == t.text {return false}
-	}
-	(*vector.Vector)(self).Push(t)
-	return true
-}
-
-func (self *set) Union(s *set) bool {
-	// if s == nil {return false}
-	changed := false
-	for _, w := range *s {
-		word := w.(tok)
-		changed = changed || self.Push(word)
-	}
-	return changed
-}                   
-
-func (self *set) NoE() (output *set) {
-	output = new(set)
-	for _, w := range *self {
-		word := w.(tok)
-		if word.text != e.text {
-			output.Push(word)
-		}
-	}
-	return
-}
-
-func (self *set) HasE() bool {
-	// if self == nil {return false}
-	for _, w := range *self {
-		word := w.(tok)
-		if word.ttype == e.ttype {return true}
-	}
-	return false
+	follows = make(map[string]*set)
 }
 
 type production struct {
+	num int
 	name string	
 	seq vector.Vector
 }
@@ -98,17 +60,40 @@ func main() {
 
 	s.content = content
 	parseGrammar()
-	
 	computeFirsts()
-	
-	for i, r := range prods {
-		fmt.Println(i, ":", r)
+	computeFollows()
+}
+
+func computeFollows() {
+	for _, w := range nonterms {
+		word := w.(tok)
+		follows[word.text] = &set{}
 	}
-	
-	fmt.Println(" ")
-	
-	for k, v := range firsts {
-		fmt.Println(k, ":", v)
+	for true {
+		changed := false
+		for _, p := range prods {
+			prod := p.(*production)
+			for i, w := range prod.seq {
+				word := w.(tok)
+				if word.ttype != nonterm {continue}
+				for j, x := range prod.seq[i + 1:] {
+					xord := x.(tok)
+					switch xord.ttype {
+					case term:
+						follows[word.text].Push(xord)
+						goto NextProd
+					case nonterm:
+						changed = follows[word.text].Union(firsts[xord.text]) || changed
+						if !firsts[xord.text].HasE() {goto NextProd}
+						if j == len(prod.seq[i + 1:]) - 1 {
+							changed = follows[word.text].Union(follows[prod.name]) || changed
+						}
+					}
+				}
+				NextProd:
+			}
+		}
+		if !changed {break}
 	}
 }
 
@@ -128,9 +113,6 @@ func computeFirsts() {
 		changed := false
 		for _, p := range prods {
 			prod := p.(*production)
-
-			// fmt.Println("Processing", prod, firsts[prod.name])
-
 			if len(prod.seq) == 0 {
 				firsts[prod.name].Push(e)
 				continue
@@ -178,35 +160,34 @@ func parseGrammar() {
 }
 
 func parseHeader() {
-	word, err := s.nextWord()
+	word, err := nextWord()
 	for err == nil && word.text != "%%" {
 		if word.text == "%token" {parseTokenList()}
-		word, err = s.nextWord()
+		word, err = nextWord()
 	}
 }
 
 func parseTokenList() {
-	for word, err := s.nextWord();
+	for word, err := nextWord();
 	    err == nil && word.ttype != newline;
-		word, err = s.nextWord() {
-		terms.Push(word)
+		word, err = nextWord() {
 	}
 }
 
 func parseProductions() {
-	for word, err := s.nextWord();
+	for word, err := nextWord();
 		err == nil && word.text != "%%";
-		word, err = s.nextWord() {
+		word, err = nextWord() {
 		if word.ttype == newline {continue}
 		if word.ttype != nonterm {
 			fmt.Println("Expected non-terminal but got", word.text)
 			return
 		}
-		nonterms.Push(word)
 		prod := new(production)
-		prods.Push(prod)
+		prod.num = len(prods)
 		prod.name = word.text
-		word, err = s.nextWord()
+		prods.Push(prod)
+		word, err = nextWord()
 		if word.ttype != begindef {
 			fmt.Println("Expected ':' but got", word.text)
 			return
@@ -216,20 +197,20 @@ func parseProductions() {
 }
 
 func parseProduction(prod *production) {
-	for word, err := s.nextWord();
+	for word, err := nextWord();
 		err == nil && word.ttype != enddef;
-		word, err = s.nextWord() {
+		word, err = nextWord() {
 		HandleProductionToken:
 		switch word.ttype {
 		case newline:
-			word, err = s.nextWord()
+			word, err = nextWord()
 			if word.ttype != newline && word.ttype != alternate && word.ttype != enddef{
 				fmt.Println("Expected an alternation or end but got", word.text)
 				return
 			}
 			goto HandleProductionToken
 		case alternate:
-			prod = &production{prod.name, vector.Vector{}}
+			prod = &production{len(prods), prod.name, vector.Vector{}}
 			prods.Push(prod)
 		case enddef:
 			return
@@ -237,4 +218,15 @@ func parseProduction(prod *production) {
 			prod.seq.Push(word)
 		}
 	}
+}
+
+func nextWord() (word tok, err os.Error) {
+	word, err = s.nextWord()
+	switch word.ttype {
+	case term:
+		terms.Push(word)
+	case nonterm:
+		nonterms.Push(word)
+	}
+	return
 }

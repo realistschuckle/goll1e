@@ -8,5 +8,6 @@ TARG=goll1e
 GOFILES=\
 	goll1e.go\
 	scanner.go\
+	set.go\
 
 include Make.cmd
