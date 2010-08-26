@@ -9,7 +9,8 @@ import (
 type tokType int
 
 const (
-	nonterm tokType = iota
+	empty tokType = iota
+	nonterm
 	term
 	newline
 	enddef
