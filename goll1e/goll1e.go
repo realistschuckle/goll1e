@@ -5,9 +5,10 @@ import (
 	"fmt"
 	"os"
 	"container/vector"
+	"utf8"
 )
 
-var dev bool = true
+var dev bool
 
 var s scanner
 var terms map[string]int
@@ -118,14 +119,80 @@ func printFile(out *os.File) {
 		out.WriteString("\"\n")
 	}
 	out.WriteString(")\n")
+
+	out.WriteString("var parseTable = [")
+	out.WriteString(fmt.Sprint(len(table)))
+	out.WriteString("][")
+	out.WriteString(fmt.Sprint(len(table[0])))
+	out.WriteString("]int {\n")
+	for r := 0; r < len(table); r++ {
+		out.WriteString("\t[")
+		out.WriteString(fmt.Sprint(len(table[0])))
+		out.WriteString("]int{")
+		for c := 0; c < len(table[0]); c++ {
+			out.WriteString(fmt.Sprint(table[r][c]))
+			out.WriteString(",")
+		}
+		out.WriteString("},\n")
+	}
+	out.WriteString("}\n")
 	
+	maxChar := 0
+	out.WriteString("var charMap = map[int]int {\n")
+	for token, i := range terms {
+		if i == 0 || token[0] != '\'' {continue}
+		char, _ := utf8.DecodeRuneInString(token[1:])
+		if char > maxChar {maxChar = char}
+		out.WriteString("\t")
+		out.WriteString(token)
+		out.WriteString(":")
+		out.WriteString(fmt.Sprint(i))
+		out.WriteString(",\n")
+	}
+	out.WriteString("}\n")
+	
+	maxChar++
+	maxToken := maxChar + len(terms) + 1
+	out.WriteString("const (\n")
+	out.WriteString("\tMAXCHAR = ")
+	out.WriteString(fmt.Sprint(maxChar))
+	out.WriteString("\n")
+	for token, i := range terms {
+		if i == 0 || token[0] == '\'' {continue}
+		out.WriteString("\t")
+		out.WriteString(token)
+		out.WriteString(" = ")
+		out.WriteString(fmt.Sprint(i + maxChar))
+		out.WriteString("\n")
+	}
+	out.WriteString("\tMAXTOKEN = ")
+	out.WriteString(fmt.Sprint(maxToken))
+	out.WriteString("\n")
+	out.WriteString(")\n")
+	
+	out.WriteString("var parseProductions = [")
+	out.WriteString(fmt.Sprint(len(prods)))
+	out.WriteString("][]int {\n")
 	for _, p := range prods {
 		prod := p.(*production)
-		if len(prod.code) > 0 {
-			out.WriteString(prod.code)
-			out.WriteString("\n")			
+		out.WriteString("\t[")
+//		out.WriteString(fmt.Sprint(len(prod.seq)))
+		out.WriteString("]int{")
+		for _, t := range prod.seq {
+			token := t.(tok)
+			switch token.ttype {
+			case term:
+				out.WriteString(fmt.Sprint(terms[token.text] + maxChar))
+			case nonterm:
+				out.WriteString(fmt.Sprint(nonterms[token.text] + maxToken))
+			}
+			out.WriteString(",")
 		}
+		out.WriteString("},\n")
 	}
+	out.WriteString("}\n")
+	
+	out.WriteString("func translateToken(t int) int {\n\tif t < MAXCHAR {return charMap[t]}\n\treturn t - MAXCHAR\n}\n")
 	
 	out.WriteString("\n")
 }
