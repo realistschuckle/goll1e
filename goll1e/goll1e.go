@@ -72,79 +72,59 @@ func main() {
 
 	s.content = content
 	parseGrammar()
-	computeFirsts()
-	computeFollows()
-	
+
 	printTermMap(terms)
 	printTermMap(nonterms)
 	printProductions()
-	printFirsts()
-}
 
-func printFirsts() {
-	for i := 0; i < len(firsts); i++ {
-		prod := prods[i].(*production)
-		fmt.Print(prod.name, "[")
-		for j, t := range *firsts[i] {
-			if j > 0 {fmt.Print(",")}
-			token := t.(int)
-			fmt.Print(translateTerm(token))
-		}
-		fmt.Print("]\n")
-	}
-	fmt.Println(" ")
-	for k, _ := range nonterms {
-		firstFor := firstsFor(k)
-		fmt.Print(k, "[")
-		for j, t := range *firstFor {
-			if j > 0 {fmt.Print(",")}
-			token := t.(int)
-			fmt.Print(translateTerm(token))
-		}
-		fmt.Print("]\n")
-	}
-}
-
-func translateTerm(i int) (output string) {
-	output = "<NOT FOUND>"
-	for k, v := range terms {
-		if v != i {continue}
-		output = k
-		break
-	}
-	return
-}
-
-func translateTerms(s *set) (output string) {
-	output = "["
-	for i, v := range *s {
-		token := v.(int)
-		if i > 0 {output += ","}
-		output += translateTerm(token)
-	}
-	output += "]"
-	return
-}
-
-func printProductions() {
-	for i, p := range prods {
-		fmt.Println(i, p)
-	}
-	fmt.Println(" ")
-}
-
-func printTermMap(terms map[string]int) {
-	sort := make([]string, len(terms))
-	for k, v := range terms {
-		sort[v] = k
-	}
-	for i, v := range sort {
-		fmt.Println(i, v)
-	}
-	fmt.Println(" ")
+	computeFirsts()
+	computeFollows()
+	
+	printSet(firsts, func(i int) string {return prods[i].(*production).name})
+	printSet(follows, func(i int) string {return translateNonterm(i)})
 }
 
 func computeFollows() {
+	for i := 0; i < len(nonterms); i++ {
+		follows[i] = &set{}
+	}
+	follows[0].Push(-1)
+	for true {
+		changed := false
+		for _, p := range prods {
+			prod := p.(*production)
+			for sidx, s := range prod.seq {
+				word := s.(tok)
+				if word.ttype != nonterm {continue}
+				wordidx := nonterms[word.text]
+				after := prod.seq[sidx + 1:]
+				if len(after) == 0 {
+					fs := followsFor(prod.name)
+					changed = follows[wordidx].Union(fs.NoE()) || changed
+					goto NextProd
+				}
+				for seqidx, t := range after {
+					next := t.(tok)
+					last := seqidx == len(after) - 1
+					switch next.ttype {
+					case term:
+						changed = follows[wordidx].Push(terms[next.text]) || changed
+						goto NextProd
+					case nonterm:
+						fs := firstsFor(next.text)
+						changed = follows[wordidx].Union(fs.NoE()) || changed
+						if !fs.HasE() {goto NextProd}
+						if last {
+							fs = followsFor(prod.name)
+							changed = follows[wordidx].Union(fs.NoE()) || changed
+						}
+					}
+				}
+			}
+			NextProd:
+		}
+		if !changed {break}
+	}
 }
 
 func computeFirsts() {
@@ -157,26 +137,25 @@ func computeFirsts() {
 			prod := p.(*production)
 			if len(prod.seq) == 0 {
 				changed = firsts[prodidx].Push(terms[""]) || changed
-				// fmt.Println("Adding <EMPTY> to", prod.name, "and changed?", changed)
 				goto NextProd
 			}
-			for _, w := range prod.seq {
+			for wordidx, w := range prod.seq {
 				word := w.(tok)
 				switch word.ttype {
 				case term:
 					changed = firsts[prodidx].Push(terms[word.text]) || changed
-					// fmt.Println("Adding", word.text, "to", prod.name, "and changed?", changed)
 					goto NextProd
 				case nonterm:
 					fs := firstsFor(word.text)
 					changed = firsts[prodidx].Union(fs.NoE()) || changed
-					// fmt.Println("Adding firsts of", word.text, translateTerms(fs), "to", prod.name, "and changed?", changed)
 					if !fs.HasE() {goto NextProd}
+					if wordidx == len(prod.seq) - 1 {
+						changed = firsts[prodidx].Push(0) || changed
+					}
 				}
 			}
 			NextProd:
 		}
-		// fmt.Println(" ")
 		if !changed {break}
 	}
 }
@@ -252,4 +231,77 @@ func firstsFor(name string) (output *set) {
 		if prod.name == name {output.Union(firsts[i])}
 	}
 	return
+}
+
+
+func followsFor(name string) *set {
+	return follows[nonterms[name]]
+}
+
+
+
+
+
+func printSet(s map[int]*set, getName func(i int) string) {
+	for i := 0; i < len(s); i++ {
+		fmt.Print(getName(i), "[")
+		for j, t := range *s[i] {
+			if j > 0 {fmt.Print(",")}
+			token := t.(int)
+			fmt.Print(translateTerm(token))
+		}
+		fmt.Print("]\n")
+	}
+	fmt.Print("\n")
+}
+
+func translateTerm(i int) (output string) {
+	output = "<NOT FOUND>"
+	if i == -1 {output = "$"}
+	for k, v := range terms {
+		if v != i {continue}
+		output = k
+		if len(output) == 0 {output = "<E>"}
+		break
+	}
+	return
+}
+
+func translateNonterm(i int) (output string) {
+	output = "<NOT FOUND>"
+	for k, v := range nonterms {
+		if v != i {continue}
+		output = k
+		break
+	}
+	return
+}
+
+func translateTerms(s *set) (output string) {
+	output = "["
+	for i, v := range *s {
+		token := v.(int)
+		if i > 0 {output += ","}
+		output += translateTerm(token)
+	}
+	output += "]"
+	return
+}
+
+func printProductions() {
+	for i, p := range prods {
+		fmt.Println(i, p)
+	}
+	fmt.Println(" ")
+}
+
+func printTermMap(terms map[string]int) {
+	sort := make([]string, len(terms))
+	for k, v := range terms {
+		sort[v] = k
+	}
+	for i, v := range sort {
+		fmt.Println(i, v)
+	}
+	fmt.Println(" ")
 }
