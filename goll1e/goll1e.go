@@ -7,23 +7,35 @@ import (
 	"container/vector"
 )
 
-var e tok
 var s scanner
-var terms set
-var nonterms set
+var terms map[string]int
+var nonterms map[string]int
 var prods vector.Vector
-var firsts map[string]*set
-var follows map[string]*set
+var firsts map[int]*set
+var follows map[int]*set
 
 func init() {
-	firsts = make(map[string]*set)
-	follows = make(map[string]*set)
+	firsts = make(map[int]*set)
+	follows = make(map[int]*set)
+	terms = make(map[string]int)
+	nonterms = make(map[string]int)
+	terms[""] = 0
 }
 
 type production struct {
-	num int
 	name string	
 	seq vector.Vector
+}
+
+func (self *production) String() (output string) {
+	output = self.name + "["
+	for i, w := range self.seq {
+		word := w.(tok)
+		if i > 0 {output += " "}
+		output += word.text
+	}
+	output += "]"
+	return
 }
 
 func main() {
@@ -62,116 +74,115 @@ func main() {
 	parseGrammar()
 	computeFirsts()
 	computeFollows()
+	
+	printTermMap(terms)
+	printTermMap(nonterms)
+	printProductions()
+	printFirsts()
+}
+
+func printFirsts() {
+	for i := 0; i < len(firsts); i++ {
+		prod := prods[i].(*production)
+		fmt.Print(prod.name, "[")
+		for j, t := range *firsts[i] {
+			if j > 0 {fmt.Print(",")}
+			token := t.(int)
+			fmt.Print(translateTerm(token))
+		}
+		fmt.Print("]\n")
+	}
+	fmt.Println(" ")
+	for k, _ := range nonterms {
+		firstFor := firstsFor(k)
+		fmt.Print(k, "[")
+		for j, t := range *firstFor {
+			if j > 0 {fmt.Print(",")}
+			token := t.(int)
+			fmt.Print(translateTerm(token))
+		}
+		fmt.Print("]\n")
+	}
+}
+
+func translateTerm(i int) (output string) {
+	output = "<NOT FOUND>"
+	for k, v := range terms {
+		if v != i {continue}
+		output = k
+		break
+	}
+	return
+}
+
+func translateTerms(s *set) (output string) {
+	output = "["
+	for i, v := range *s {
+		token := v.(int)
+		if i > 0 {output += ","}
+		output += translateTerm(token)
+	}
+	output += "]"
+	return
+}
+
+func printProductions() {
+	for i, p := range prods {
+		fmt.Println(i, p)
+	}
+	fmt.Println(" ")
+}
+
+func printTermMap(terms map[string]int) {
+	sort := make([]string, len(terms))
+	for k, v := range terms {
+		sort[v] = k
+	}
+	for i, v := range sort {
+		fmt.Println(i, v)
+	}
+	fmt.Println(" ")
 }
 
 func computeFollows() {
-	for _, w := range nonterms {
-		word := w.(tok)
-		follows[word.text] = &set{}
-	}
-	for true {
-		changed := false
-		for _, p := range prods {
-			prod := p.(*production)
-			for i, w := range prod.seq {
-				word := w.(tok)
-				if word.ttype != nonterm {continue}
-				for j, x := range prod.seq[i + 1:] {
-					xord := x.(tok)
-					switch xord.ttype {
-					case term:
-						follows[word.text].Push(xord)
-						goto NextProd
-					case nonterm:
-						changed = follows[word.text].Union(firsts[xord.text]) || changed
-						if !firsts[xord.text].HasE() {goto NextProd}
-						if j == len(prod.seq[i + 1:]) - 1 {
-							changed = follows[word.text].Union(follows[prod.name]) || changed
-						}
-					}
-				}
-				NextProd:
-			}
-		}
-		if !changed {break}
-	}
 }
 
 func computeFirsts() {
-	firsts[""] = &set{tok{"", empty}}
-	for _, w := range nonterms {
-		word := w.(tok)
-		firsts[word.text] = &set{}
-	}
-	for _, w := range terms {
-		word := w.(tok)
-		s := &set{}
-		s.Push(word)
-		firsts[word.text] = s
+	for i := 0; i < len(prods); i++ {
+		firsts[i] = &set{}
 	}
 	for true {
 		changed := false
-		for _, p := range prods {
+		for prodidx, p := range prods {
 			prod := p.(*production)
 			if len(prod.seq) == 0 {
-				firsts[prod.name].Push(e)
-				continue
+				changed = firsts[prodidx].Push(terms[""]) || changed
+				// fmt.Println("Adding <EMPTY> to", prod.name, "and changed?", changed)
+				goto NextProd
 			}
-			first := prod.seq[0].(tok)
-			switch first.ttype {
-			case term:
-				// fmt.Println("Found term", first)
-				changed = firsts[prod.name].Push(first) || changed
-			case nonterm:
-				// fmt.Println("Found nonterm", first)
-				if firsts[first.text].HasE() {                                     
-					noe := firsts[first.text].NoE()
-					changed = firsts[prod.name].Union(noe) || changed
-					 for i := 1; i < len(prod.seq); i++ {
-						t := prod.seq[i].(tok)
-						if firsts[t.text].HasE() {
-							noe = firsts[t.text].NoE()
-							changed = firsts[prod.name].Union(noe) || changed
-							if i == len(prod.seq) - 1 {
-								firsts[prod.name].Push(e)
-							}
-						} else {
-							changed = firsts[prod.name].Union(firsts[t.text]) || changed
-							break
-						}
-					}
-				} else {
-					changed = firsts[prod.name].Union(firsts[first.text]) || changed
+			for _, w := range prod.seq {
+				word := w.(tok)
+				switch word.ttype {
+				case term:
+					changed = firsts[prodidx].Push(terms[word.text]) || changed
+					// fmt.Println("Adding", word.text, "to", prod.name, "and changed?", changed)
+					goto NextProd
+				case nonterm:
+					fs := firstsFor(word.text)
+					changed = firsts[prodidx].Union(fs.NoE()) || changed
+					// fmt.Println("Adding firsts of", word.text, translateTerms(fs), "to", prod.name, "and changed?", changed)
+					if !fs.HasE() {goto NextProd}
 				}
 			}
-			// fmt.Println(" ")
+			NextProd:
 		}
+		// fmt.Println(" ")
 		if !changed {break}
-	}
-	for _, w := range terms {
-		word := w.(tok)
-		firsts[word.text] = nil, false
 	}
 }
 
 func parseGrammar() {	
-	parseHeader()
 	parseProductions()
-}
-
-func parseHeader() {
-	word, err := nextWord()
-	for err == nil && word.text != "%%" {
-		if word.text == "%token" {parseTokenList()}
-		word, err = nextWord()
-	}
-}
-
-func parseTokenList() {
-	for word, err := nextWord();
-	    err == nil && word.ttype != newline;
-		word, err = nextWord() {
-	}
 }
 
 func parseProductions() {
@@ -184,7 +195,6 @@ func parseProductions() {
 			return
 		}
 		prod := new(production)
-		prod.num = len(prods)
 		prod.name = word.text
 		prods.Push(prod)
 		word, err = nextWord()
@@ -210,7 +220,7 @@ func parseProduction(prod *production) {
 			}
 			goto HandleProductionToken
 		case alternate:
-			prod = &production{len(prods), prod.name, vector.Vector{}}
+			prod = &production{prod.name, vector.Vector{}}
 			prods.Push(prod)
 		case enddef:
 			return
@@ -224,9 +234,22 @@ func nextWord() (word tok, err os.Error) {
 	word, err = s.nextWord()
 	switch word.ttype {
 	case term:
-		terms.Push(word)
+	if _, ok := terms[word.text]; !ok {
+		terms[word.text] = len(terms)
+	}
 	case nonterm:
-		nonterms.Push(word)
+		if _, ok := nonterms[word.text]; !ok {
+			nonterms[word.text] = len(nonterms)
+		}
+	}
+	return
+}
+
+func firstsFor(name string) (output *set) {
+	output = &set{}
+	for i, p := range prods {
+		prod := p.(*production)
+		if prod.name == name {output.Union(firsts[i])}
 	}
 	return
 }
