@@ -13,6 +13,7 @@ var nonterms map[string]int
 var prods vector.Vector
 var firsts map[int]*set
 var follows map[int]*set
+var table [][]int
 
 func init() {
 	firsts = make(map[int]*set)
@@ -82,6 +83,35 @@ func main() {
 	
 	printSet(firsts, func(i int) string {return prods[i].(*production).name})
 	printSet(follows, func(i int) string {return translateNonterm(i)})
+	
+	computeTable()
+	
+	printTable()
+	printTableRaw()
+}
+
+func computeTable() {
+	table = make([][]int, len(nonterms))
+	for i := 0; i < len(nonterms); i++ {
+		table[i] = make([]int, len(terms))
+		for j := 0; j < len(terms); j++ {
+			table[i][j] = -1
+		}
+	}
+	for nonterm, r := range nonterms {
+		for _, c := range terms {
+			for prodidx, p := range prods {
+				prod := p.(*production)
+				if prod.name != nonterm {continue}
+				switch {
+				case firsts[prodidx].IndexOf(c) > -1:
+					table[r][c] = prodidx
+				case firsts[prodidx].HasE() && follows[r].IndexOf(c) > -1:
+					table[r][c] = prodidx
+				}
+			}
+		}
+	}
 }
 
 func computeFollows() {
@@ -101,7 +131,7 @@ func computeFollows() {
 				if len(after) == 0 {
 					fs := followsFor(prod.name)
 					changed = follows[wordidx].Union(fs.NoE()) || changed
-					goto NextProd
+					goto NextItem
 				}
 				for seqidx, t := range after {
 					next := t.(tok)
@@ -109,19 +139,19 @@ func computeFollows() {
 					switch next.ttype {
 					case term:
 						changed = follows[wordidx].Push(terms[next.text]) || changed
-						goto NextProd
+						goto NextItem
 					case nonterm:
 						fs := firstsFor(next.text)
 						changed = follows[wordidx].Union(fs.NoE()) || changed
-						if !fs.HasE() {goto NextProd}
+						if !fs.HasE() {goto NextItem}
 						if last {
 							fs = followsFor(prod.name)
 							changed = follows[wordidx].Union(fs.NoE()) || changed
 						}
 					}
 				}
+				NextItem:
 			}
-			NextProd:
 		}
 		if !changed {break}
 	}
@@ -304,4 +334,36 @@ func printTermMap(terms map[string]int) {
 		fmt.Println(i, v)
 	}
 	fmt.Println(" ")
+}
+
+func printTable() {
+	fmt.Print("             ")
+	for c := 1; c < len(terms); c++ {
+		fmt.Printf("%6s ", translateTerm(c))
+	}
+	fmt.Print("\n")
+	for r := 0; r < len(nonterms); r++ {
+		fmt.Printf("%12s ", translateNonterm(r))
+		for c := 1; c < len(terms); c++ {
+			fmt.Printf("%6d ", table[r][c])
+		}
+		fmt.Print("\n")
+	}
+	fmt.Print("\n")
+}
+
+func printTableRaw() {
+	fmt.Print("             ")
+	for c := 1; c < len(terms); c++ {
+		fmt.Printf("%6d ", c)
+	}
+	fmt.Print("\n")
+	for r := 0; r < len(nonterms); r++ {
+		fmt.Printf("%12d ", r)
+		for c := 1; c < len(terms); c++ {
+			fmt.Printf("%6d ", table[r][c])
+		}
+		fmt.Print("\n")
+	}
+	fmt.Print("\n")
 }
