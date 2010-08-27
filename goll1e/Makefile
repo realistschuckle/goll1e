@@ -9,5 +9,8 @@ GOFILES=\
 	goll1e.go\
 	scanner.go\
 	set.go\
+	compute.go\
+	devprint.go\
+	parse.go\
 
 include Make.cmd
