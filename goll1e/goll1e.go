@@ -106,6 +106,7 @@ func main() {
 	
 	printFile(out)
 	out.Write(s.remainder())
+	out.WriteString("\n")
 }
 
 func printFile(out *os.File) {
@@ -202,7 +203,8 @@ func printFile(out *os.File) {
 	}
 	out.WriteString("}\n")
 	
-	out.WriteString("func translateToken(t int) int {\n" +
+	out.WriteString("func translateToken(t int, eof int) int {\n" +
+					"	if t == eof {return 0}\n" +
 					"	if t >= MAXTOKEN {return t - MAXTOKEN - 1}\n" +
 					"	if t <= MINTOKEN {return charMap[t]}\n" +
 					"	return t - MINTOKEN\n" +
@@ -214,6 +216,9 @@ func printFile(out *os.File) {
 					"	stack.Push(" + fmt.Sprint(maxToken + 1) + ")\n" +
 					"	tos := stack.Last()\n" +
 					"	for true {\n" +
+					// "		fmt.Println(\"WORD: \", word)\n" +
+					// "		fmt.Println(\"TOS:  \", tos)\n" +
+					// "		fmt.Println(\"STACK:\", stack)\n" +
 					"		if tos == eof && word == eof {return true}\n" +
 					"		if (tos < MAXTOKEN) || tos == eof {\n" +
 					"			if tos == word {\n" +
@@ -222,10 +227,13 @@ func printFile(out *os.File) {
 					"				tos = stack.Last()\n" +
 					"			} else {break}\n" +
 					"		} else {\n" +
-					"			row, col := translateToken(tos), translateToken(word)\n" +
+					"			row, col := translateToken(tos, eof), translateToken(word, eof)\n" +
+					// "			fmt.Println(\"Row, Col:\", row, col)\n" +
 					"			if parseTable[row][col] == -1 {break}\n" +
 					"			stack.Pop()\n" +
 					"			ruleNumber := parseTable[row][col]\n" +
+					// "			fmt.Println(\"Row, Col:\", row, col)\n" +
+					// "			fmt.Println(\"Rule Number\", ruleNumber)\n" +
 					"			for i := len(parseProductions[ruleNumber]) - 1;\n" +
 					"				i >= 0;\n" +
 					"				i-- {\n" +
@@ -234,6 +242,9 @@ func printFile(out *os.File) {
 					"			tos = stack.Last()\n" +
 					"		}\n" +
 					"	}\n" +
+					// "	fmt.Println(\"WORD: \", word)\n" +
+					// "	fmt.Println(\"TOS:  \", tos)\n" +
+					// "	fmt.Println(\"STACK:\", stack)\n" +
 					"	return false\n" +
 					"}\n")
 	

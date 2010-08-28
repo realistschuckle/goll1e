@@ -40,7 +40,7 @@ const (
 )
 
 func main() {
-	reader := strings.NewReader("kill bill")
+	reader := strings.NewReader("one")
 	var s scanner.Scanner
 	s.Init(reader)
 	nextWord := func()int {
@@ -58,9 +58,19 @@ func main() {
 				return moo
 			case "one":
 				return one
+			case "myka":
+				return myka
+			case "pillow":
+				return pillow
+			case "fool":
+				return fool
+			case "bill":
+				return bill
 			}
 		case scanner.EOF:
 			return EOF
+		default:
+			return i
 		}
 		return -1
 	}
