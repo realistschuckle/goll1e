@@ -105,6 +105,7 @@ func main() {
 	}
 	
 	printFile(out)
+	out.Write(s.remainder())
 }
 
 func printFile(out *os.File) {
@@ -113,12 +114,14 @@ func printFile(out *os.File) {
 	out.WriteString(packageName)
 	out.WriteString("\n\n")
 	out.WriteString("import (\n")
+	out.WriteString("\t\"container/vector\"\n")
 	for _, port := range imports {
+		if port == "container/vector" {continue}
 		out.WriteString("\t\"")
 		out.WriteString(port)
 		out.WriteString("\"\n")
 	}
-	out.WriteString(")\n")
+	out.WriteString(")\n\n")
 
 	out.WriteString("var parseTable = [")
 	out.WriteString(fmt.Sprint(len(table)))
@@ -154,7 +157,7 @@ func printFile(out *os.File) {
 	maxChar++
 	maxToken := maxChar + len(terms) + 1
 	out.WriteString("const (\n")
-	out.WriteString("\tMAXCHAR = ")
+	out.WriteString("\tMINTOKEN int = ")
 	out.WriteString(fmt.Sprint(maxChar))
 	out.WriteString("\n")
 	for token, i := range terms {
@@ -168,6 +171,9 @@ func printFile(out *os.File) {
 	out.WriteString("\tMAXTOKEN = ")
 	out.WriteString(fmt.Sprint(maxToken))
 	out.WriteString("\n")
+	out.WriteString("\tUSER = ")
+	out.WriteString(fmt.Sprint(maxToken + len(prods) + 1))
+	out.WriteString("\n")
 	out.WriteString(")\n")
 	
 	out.WriteString("var parseProductions = [")
@@ -176,15 +182,19 @@ func printFile(out *os.File) {
 	for _, p := range prods {
 		prod := p.(*production)
 		out.WriteString("\t[")
-//		out.WriteString(fmt.Sprint(len(prod.seq)))
 		out.WriteString("]int{")
 		for _, t := range prod.seq {
 			token := t.(tok)
 			switch token.ttype {
 			case term:
-				out.WriteString(fmt.Sprint(terms[token.text] + maxChar))
+				if token.text[0] == '\'' {
+					r, _ := utf8.DecodeRuneInString(token.text[1:])
+					out.WriteString(fmt.Sprint(r))
+				} else {
+					out.WriteString(fmt.Sprint(terms[token.text] + maxChar))
+				}
 			case nonterm:
-				out.WriteString(fmt.Sprint(nonterms[token.text] + maxToken))
+				out.WriteString(fmt.Sprint(nonterms[token.text] + maxToken + 1))
 			}
 			out.WriteString(",")
 		}
@@ -192,7 +202,40 @@ func printFile(out *os.File) {
 	}
 	out.WriteString("}\n")
 	
-	out.WriteString("func translateToken(t int) int {\n\tif t < MAXCHAR {return charMap[t]}\n\treturn t - MAXCHAR\n}\n")
+	out.WriteString("func translateToken(t int) int {\n" +
+					"	if t >= MAXTOKEN {return t - MAXTOKEN - 1}\n" +
+					"	if t <= MINTOKEN {return charMap[t]}\n" +
+					"	return t - MINTOKEN\n" +
+					"}\n" +
+					"func parse(eof int, nextWord func()int) bool {\n" +
+					"	word := nextWord()\n" +
+					"	var stack vector.IntVector\n" +
+					"	stack.Push(eof)\n" +
+					"	stack.Push(" + fmt.Sprint(maxToken + 1) + ")\n" +
+					"	tos := stack.Last()\n" +
+					"	for true {\n" +
+					"		if tos == eof && word == eof {return true}\n" +
+					"		if (tos < MAXTOKEN) || tos == eof {\n" +
+					"			if tos == word {\n" +
+					"				stack.Pop()\n" +
+					"				word = nextWord()\n" +
+					"				tos = stack.Last()\n" +
+					"			} else {break}\n" +
+					"		} else {\n" +
+					"			row, col := translateToken(tos), translateToken(word)\n" +
+					"			if parseTable[row][col] == -1 {break}\n" +
+					"			stack.Pop()\n" +
+					"			ruleNumber := parseTable[row][col]\n" +
+					"			for i := len(parseProductions[ruleNumber]) - 1;\n" +
+					"				i >= 0;\n" +
+					"				i-- {\n" +
+					"				stack.Push(parseProductions[ruleNumber][i])\n" +
+					"			}\n" +
+					"			tos = stack.Last()\n" +
+					"		}\n" +
+					"	}\n" +
+					"	return false\n" +
+					"}\n")
 	
 	out.WriteString("\n")
 }

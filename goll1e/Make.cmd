@@ -29,15 +29,14 @@ $(QUOTED_GOBIN)/$(TARG): $(TARG)
 	cp -f $(TARG) $(QUOTED_GOBIN)
 
 gen: test/output.$O
-	@mkdir -p test
-	rm -f test/$(TARG).a
-	$(QUOTED_GOBIN)/gopack grc test/test.a test/output.$O
+	$(QUOTED_GOBIN)/$(LD) -o test/test test/output.$O
 
 test/output.$O: test/output.go
 	$(QUOTED_GOBIN)/$(GC) -o $@ test/output.go
 
-test/output.go: $(TARG)
-	mkdir test
+test/output.go: $(TARG) input.y
+	@mkdir -p test
+	rm -f test/test
 	./$(TARG) input.y test/output.go
 
 CLEANFILES+=$(TARG)

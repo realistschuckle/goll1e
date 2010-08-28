@@ -33,6 +33,10 @@ type scanner struct {
 	content []uint8
 }
 
+func (self *scanner) remainder() []byte {
+	return self.content[self.index:]
+}
+
 func (self *scanner) nextWord() (word tok, err os.Error) {
 	if self.index >= len(self.content) {
 		err = os.NewError("EOF")

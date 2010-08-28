@@ -44,6 +44,8 @@ func parseProductions() {
 		}
 		parseProduction(prod)
 	}
+	memorizeTerms = false
+	terms["%%"] = 0, false
 }
 
 func parseProduction(prod *production) {
