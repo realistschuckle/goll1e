@@ -222,7 +222,7 @@ func printFile(out *os.File) {
 	}
 	out.WriteString("}\n")
 	
-	out.WriteString("func yyrunrule(i int, act *yystype) {\n")
+	out.WriteString("func yyrunrule(i int, act *yystype, yyres vector.Vector) {\n")
 	out.WriteString("	switch i {\n")
 	for i, p := range prods {
 		prod := p.(*production)
@@ -248,16 +248,17 @@ func printFile(out *os.File) {
 	out.WriteString("	}\n")
 	out.WriteString("}\n")
 	
-	out.WriteString("var yyres vector.Vector\n" +
-					"func yytranslate(t int, eof int) int {\n" +
+	outputType := unionEntries[typedEntries[translateNonterm(0)]]
+	
+	out.WriteString("func yytranslate(t int, eof int) int {\n" +
 					"	if t == eof {return 0}\n" +
 					"	if t >= yyMAXTOKEN {return t - yyMAXTOKEN - 1}\n" +
 					"	if t <= yyMINTOKEN {return yycharmap[t]}\n" +
 					"	return t - yyMINTOKEN\n" +
 					"}\n" +
-					"func yyparse(eof int, nextWord func(v *yystype)int) (output bool) {\n" +
-					"	yyres.Resize(0, cap(yyres))\n" +
+					"func yyparse(eof int, nextWord func(v *yystype)int) (output bool, result " + outputType + ") {\n" +
 					"	curyys := &yystype{}\n" +
+					"	var yyres vector.Vector\n" +
 					"	var inputs vector.IntVector\n" +
 					"	var values vector.Vector\n" +
 					"	word := nextWord(curyys)\n" +
@@ -344,13 +345,14 @@ func printFile(out *os.File) {
 	}
 	out.WriteString("			ruleNumber := r - yyMAXTOKEN\n" +
 					"			v := &yystype{}\n" +
-					"			yyrunrule(ruleNumber, v)\n" +
+					"			yyrunrule(ruleNumber, v, yyres)\n" +
 					"			numTokens := len(yyprods[ruleNumber])\n" +
 					"			for i := 0; i < numTokens; i++ {\n" +
 					"				yyres.Pop()\n" +
 					"			}\n" +
 					"			yyres.Push(v)\n" +
 					"		}\n" +
+					"		result = yyres[0].(*yystype)."+ typedEntries[translateNonterm(0)] + "\n" +
 					"	}\n" +
 					"	return\n" +
 					"}\n")
