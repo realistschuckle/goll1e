@@ -33,7 +33,7 @@ pre. git clone git://github.com/realistschuckle/goll1e.git goll1e
 cd goll1e
 make gen
 test/test
-1 * 2 + 3 / 4 - 5
+1 * 2 + 3 / 4 - 5 eof
 
 h1. How can I use it?
 
