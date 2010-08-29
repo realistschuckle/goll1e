@@ -107,8 +107,7 @@ func main() {
 			}
 			return -1
 		}
-		succeeded, result := yyparse(EOF, nextWord)
-		if succeeded {
+		if ok, result := yyparse(EOF, nextWord); ok {
 			fmt.Println("Result:", result)
 		} else {
 			fmt.Println("Can't parse that, dude.")
