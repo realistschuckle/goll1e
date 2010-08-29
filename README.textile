@@ -1,7 +1,7 @@
 h1. What is it?
 
-I have implemented an LL(1) parser generator for the Go programming language. I did this to build parse trees for my HAML parser.
-You can find out more about LL(1) parsers at "LL Parser":http://en.wikipedia.org/wiki/LL_parser (Wikipedia)
+I have implemented an ==LL(1)== parser generator for the Go programming language. I did this to build parse trees for my HAML parser.
+You can find out more about ==LL(1)== parsers at "LL Parser":http://en.wikipedia.org/wiki/LL_parser (Wikipedia)
 You can find out more about GO at "golang.org":http://golang.org
 
 h1. Is it done?
