@@ -16,6 +16,7 @@ var terms map[string]int
 var nonterms map[string]int
 var unionEntries map[string]string
 var typedEntries map[string]string
+var defaultcode string
 var prods vector.Vector
 var firsts map[int]*set
 var follows map[int]*set
@@ -26,6 +27,7 @@ var packageName string
 var imports vector.StringVector
 
 func init() {
+	defaultcode = "{ $$ = $1 }"
 	firsts = make(map[int]*set)
 	follows = make(map[int]*set)
 	terms = make(map[string]int)

@@ -1,18 +1,24 @@
 %package main
 %import scanner fmt os strconv
 
+%defaultcode {
+	fmt.Println("Default code. Assigning", $1, " to ", $$, "."); $$ = $1
+}
+
 %union {
 	fval float
+	ival int
 	op func(float)float
 }
 
-%token<fval> floating integer
+%token<fval> floating
+%token<ival> integer
 %type<fval> Calc Num Mult Add
 %type<op> MultA AddA
 
 %%
 
-Calc : Add				{ fmt.Println("0. Found Calc->Num Mult. Calculated", $$); $$ = $1 }
+Calc : Add
 	 ;
 	
 Mult : Num MultA		{ fmt.Println("1. Found Mult->'*' Num."); $$ = $2($1) }
@@ -31,8 +37,8 @@ AddA : '+' Add			{ fmt.Println("6. Found AddA->'+' Add"); $$ = plus($2) }
 	 |					{ fmt.Println("8. Found AddA->{}"); $$ = noop}
 	 ;
 
-Num : floating		{ fmt.Println("9. Found Num->floating. Forwarding value", $1); $$ = $1 }
-	| integer		{ fmt.Println("10. Found Num->integer. Forwarding value", $1); $$ = float($1) }
+Num : floating
+	| integer			{ fmt.Println("10. Found Num->integer. Forwarding value", $1); $$ = float($1) }
 	;
 
 %%
@@ -81,8 +87,7 @@ func main() {
 				v.fval, _ = strconv.Atof(s.TokenText())
 				return floating
 			case scanner.Int:
-				i, _ := strconv.Atoi(s.TokenText())
-				v.fval = float(i)
+				v.ival, _ = strconv.Atoi(s.TokenText())
 				return integer
 			case scanner.Ident:
 				if s.TokenText() == "eof" {return EOF}

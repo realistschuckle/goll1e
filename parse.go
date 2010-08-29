@@ -31,6 +31,11 @@ func parseHeader() {
 			parseTypedEntries(word.text[6:len(word.text) - 1])
 		case len(word.text) > 7 && word.text[0:6] == "%token":
 			parseTypedEntries(word.text[7:len(word.text) - 1])
+		case word.text == "%defaultcode":
+			memorizeTerms = true
+			code, _ := nextWord()
+			defaultcode = code.text
+			memorizeTerms = false
 		default:
 			fmt.Println("Unrecognized header entry:",word.text)
 		}
@@ -78,6 +83,12 @@ func parseProductions() {
 			return
 		}
 		parseProduction(prod)
+	}
+	for _, p := range prods {
+		prod := p.(*production)
+		if len(prod.code) == 0 {
+			prod.code = defaultcode
+		}
 	}
 	memorizeTerms = false
 	terms["%%"] = 0, false
