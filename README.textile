@@ -4,6 +4,8 @@ I have implemented an ==LL(1)== parser generator for the Go programming language
 You can find out more about ==LL(1)== parsers at "LL Parser":http://en.wikipedia.org/wiki/LL_parser (Wikipedia)
 You can find out more about GO at "golang.org":http://golang.org
 
+Check out the "wiki":http://wiki.github.com/realistschuckle/goll1e/ for information on the input grammar, the generated file structure, and other stufff (but not much other stuff).
+
 h1. Is it done?
 
 For a first draft, yes, I think so. Features include:
