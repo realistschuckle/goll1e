@@ -9,7 +9,7 @@ nullstring :=
 space := $(nullstring) # a space at the end
 QUOTED_GOROOT:=$(subst $(space),\ ,$(GOROOT))
 
-include ../Make.common
+include Make.common
 
 ifeq ($(GOOS),windows) 
 TARG:=$(TARG).exe 
@@ -28,7 +28,19 @@ install: $(QUOTED_GOBIN)/$(TARG)
 $(QUOTED_GOBIN)/$(TARG): $(TARG)
 	cp -f $(TARG) $(QUOTED_GOBIN)
 
+gen: test/output.$O
+	$(QUOTED_GOBIN)/$(LD) -o test/test test/output.$O
+
+test/output.$O: test/output.go
+	$(QUOTED_GOBIN)/$(GC) -o $@ test/output.go
+
+test/output.go: $(TARG) input.y
+	@mkdir -p test
+	rm -f test/test
+	./$(TARG) input.y test/output.go
+
 CLEANFILES+=$(TARG)
 
 nuke: clean
 	rm -f $(QUOTED_GOBIN)/$(TARG)
+	rm -rf test
