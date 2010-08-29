@@ -12,6 +12,8 @@ func parseHeader() {
 		word, err = nextWord() {
 		if word.ttype == newline {continue}
 		switch {
+		case word.text == "%dev":
+			dev = true
 		case word.text == "%package":
 			word, err = nextWord()
 			packageName = word.text
