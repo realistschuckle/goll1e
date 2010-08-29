@@ -141,7 +141,7 @@ func printFile(out *os.File) {
 	}
 	out.WriteString("}\n")
 	
-	out.WriteString("var parseTable = [")
+	out.WriteString("var yytable = [")
 	out.WriteString(fmt.Sprint(len(table)))
 	out.WriteString("][")
 	out.WriteString(fmt.Sprint(len(table[0])))
@@ -159,7 +159,7 @@ func printFile(out *os.File) {
 	out.WriteString("}\n")
 	
 	maxChar := 0
-	out.WriteString("var charMap = map[int]int {\n")
+	out.WriteString("var yycharmap = map[int]int {\n")
 	for token, i := range terms {
 		if i == 0 || token[0] != '\'' {continue}
 		char, _ := utf8.DecodeRuneInString(token[1:])
@@ -175,7 +175,7 @@ func printFile(out *os.File) {
 	maxChar++
 	maxToken := maxChar + len(terms) + 1
 	out.WriteString("const (\n")
-	out.WriteString("\tMINTOKEN int = ")
+	out.WriteString("\tyyMINTOKEN int = ")
 	out.WriteString(fmt.Sprint(maxChar))
 	out.WriteString("\n")
 	for token, i := range terms {
@@ -186,15 +186,15 @@ func printFile(out *os.File) {
 		out.WriteString(fmt.Sprint(i + maxChar))
 		out.WriteString("\n")
 	}
-	out.WriteString("\tMAXTOKEN = ")
+	out.WriteString("\tyyMAXTOKEN = ")
 	out.WriteString(fmt.Sprint(maxToken))
 	out.WriteString("\n")
-	out.WriteString("\tUSER = ")
+	out.WriteString("\tyyUSER = ")
 	out.WriteString(fmt.Sprint(maxToken + len(prods) + 1))
 	out.WriteString("\n")
 	out.WriteString(")\n")
 	
-	out.WriteString("var parseProductions = [")
+	out.WriteString("var yyprods = [")
 	out.WriteString(fmt.Sprint(len(prods)))
 	out.WriteString("][]int {\n")
 	for _, p := range prods {
@@ -220,7 +220,7 @@ func printFile(out *os.File) {
 	}
 	out.WriteString("}\n")
 	
-	out.WriteString("func runRule(i int, act *yystype) {\n")
+	out.WriteString("func yyrunrule(i int, act *yystype) {\n")
 	out.WriteString("	switch i {\n")
 	for i, p := range prods {
 		prod := p.(*production)
@@ -236,7 +236,7 @@ func printFile(out *os.File) {
 			case term, nonterm:
 				ph := fmt.Sprintf("$%d", d)
 				suffix := typedEntries[token.text]
-				rep := fmt.Sprintf("res[len(res) - %d].(*yystype).%s", d, suffix)
+				rep := fmt.Sprintf("yyres[len(yyres) - %d].(*yystype).%s", d, suffix)
 				code = strings.Replace(code, ph, rep, -1)
 			}
 		}
@@ -246,20 +246,20 @@ func printFile(out *os.File) {
 	out.WriteString("	}\n")
 	out.WriteString("}\n")
 	
-	out.WriteString("var res vector.Vector\n" +
-					"func translateToken(t int, eof int) int {\n" +
+	out.WriteString("var yyres vector.Vector\n" +
+					"func yytranslate(t int, eof int) int {\n" +
 					"	if t == eof {return 0}\n" +
-					"	if t >= MAXTOKEN {return t - MAXTOKEN - 1}\n" +
-					"	if t <= MINTOKEN {return charMap[t]}\n" +
-					"	return t - MINTOKEN\n" +
+					"	if t >= yyMAXTOKEN {return t - yyMAXTOKEN - 1}\n" +
+					"	if t <= yyMINTOKEN {return yycharmap[t]}\n" +
+					"	return t - yyMINTOKEN\n" +
 					"}\n" +
-					"func parse(eof int, nextWord func(v *yystype)int) (output bool) {\n" +
-					"	res.Resize(0, cap(res))\n" +
+					"func yyparse(eof int, nextWord func(v *yystype)int) (output bool) {\n" +
+					"	yyres.Resize(0, cap(yyres))\n" +
 					"	curyys := &yystype{}\n" +
 					"	var inputs vector.IntVector\n" +
 					"	var values vector.Vector\n" +
 					"	word := nextWord(curyys)\n" +
-					"	if(word > MINTOKEN && word < MAXTOKEN) {values.Push(curyys)}\n" +
+					"	if(word > yyMINTOKEN && word < yyMAXTOKEN) {values.Push(curyys)}\n" +
 					"	curyys = &yystype{}\n" +
 					"	var stack vector.IntVector\n" +
 					"	stack.Push(eof)\n" +
@@ -273,7 +273,7 @@ func printFile(out *os.File) {
 						"		fmt.Println(\"STACK:\", stack)\n")
 	}
 	out.WriteString("		if tos == eof && word == eof {output = true; break}\n" +
-					"		if (tos < MAXTOKEN) || tos == eof {\n" +
+					"		if (tos < yyMAXTOKEN) || tos == eof {\n" +
 					"			if tos == word {\n")
 	if dev {
 		out.WriteString("				fmt.Println(\"Matched on terminal:\", word)\n")
@@ -282,26 +282,26 @@ func printFile(out *os.File) {
 					"				stack.Pop()\n" +
 					"				stack.Pop()\n" +
 					"				word = nextWord(curyys)\n" +
-					"				if(word > MINTOKEN && word < MAXTOKEN) {values.Push(curyys)}\n" +
+					"				if(word > yyMINTOKEN && word < yyMAXTOKEN) {values.Push(curyys)}\n" +
 					"				curyys = &yystype{}\n" +
 					"				tos = stack.Last()\n" +
 					"			} else {break}\n" +
 					"		} else {\n" +
-					"			row, col := translateToken(tos, eof), translateToken(word, eof)\n" +
-					"			ruleNumber := parseTable[row][col]\n" +
+					"			row, col := yytranslate(tos, eof), yytranslate(word, eof)\n" +
+					"			ruleNumber := yytable[row][col]\n" +
 					"			if ruleNumber == -1 {break /* Inform of error. */}\n" +
-					"			inputs.Push(ruleNumber + MAXTOKEN)\n" +
+					"			inputs.Push(ruleNumber + yyMAXTOKEN)\n" +
 					"			stack.Pop()\n" +
 					"			stack.Pop()\n")
 	if dev {
 		out.WriteString("			fmt.Println(\"Row, Col:\", row, col)\n" +
 						"			fmt.Println(\"Rule Number\", ruleNumber)\n")
 	}
-	out.WriteString("			for i := len(parseProductions[ruleNumber]) - 1;\n" +
+	out.WriteString("			for i := len(yyprods[ruleNumber]) - 1;\n" +
 					"				i >= 0;\n" +
 					"				i-- {\n" +
 					"				stack.Push(-1)\n" +
-					"				stack.Push(parseProductions[ruleNumber][i])\n" +
+					"				stack.Push(yyprods[ruleNumber][i])\n" +
 					"			}\n" +
 					"			tos = stack.Last()\n" +
 					"		}\n" +
@@ -317,37 +317,37 @@ func printFile(out *os.File) {
 	if dev {
 		out.WriteString("			fmt.Println(\"Working result:\", r)\n")
 	}
-	out.WriteString("			if r < MINTOKEN {\n")
+	out.WriteString("			if r < yyMINTOKEN {\n")
 	if dev {
 		out.WriteString("				fmt.Println(\"Result is literal. Pushing nil.\")\n")
 	}
-	out.WriteString("				res.Push(nil)\n" +
+	out.WriteString("				yyres.Push(nil)\n" +
 					"				continue\n" +
 					"			}\n" +
-					"			if r < MAXTOKEN {\n" +
+					"			if r < yyMAXTOKEN {\n" +
 					"				value := values.Pop()\n")
 	if dev {
 		out.WriteString("				fmt.Println(\"Result is token. Pushing\", value)\n")
 	}
-	out.WriteString("				res.Push(value)\n" +
+	out.WriteString("				yyres.Push(value)\n" +
 					"				continue\n" +
 					"			}\n")
 	if dev {
-		out.WriteString("			fmt.Println(\"Result is rule number\", r - MAXTOKEN)\n" +
+		out.WriteString("			fmt.Println(\"Result is rule number\", r - yyMAXTOKEN)\n" +
 						"			fmt.Print(\"RES: \")\n" +
-						"			for _, v := range res {\n" +
+						"			for _, v := range yyres {\n" +
 						"				fmt.Print(v, \" \")\n" +
 						"			}\n" +
 						"			fmt.Print(\"\\n\")\n")
 	}
-	out.WriteString("			ruleNumber := r - MAXTOKEN\n" +
+	out.WriteString("			ruleNumber := r - yyMAXTOKEN\n" +
 					"			v := &yystype{}\n" +
-					"			runRule(ruleNumber, v)\n" +
-					"			numTokens := len(parseProductions[ruleNumber])\n" +
+					"			yyrunrule(ruleNumber, v)\n" +
+					"			numTokens := len(yyprods[ruleNumber])\n" +
 					"			for i := 0; i < numTokens; i++ {\n" +
-					"				res.Pop()\n" +
+					"				yyres.Pop()\n" +
 					"			}\n" +
-					"			res.Push(v)\n" +
+					"			yyres.Push(v)\n" +
 					"		}\n" +
 					"	}\n" +
 					"	return\n" +

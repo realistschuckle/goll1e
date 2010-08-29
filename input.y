@@ -38,7 +38,7 @@ Num : floating		{ fmt.Println("9. Found Num->floating. Forwarding value", $1); $
 %%
 
 const (
-	EOF = USER + 1
+	EOF = yyUSER + 1
 )
 
 func mult(m float) func(float)float {
@@ -102,8 +102,8 @@ func main() {
 			}
 			return -1
 		}
-		if parse(EOF, nextWord) {
-			fmt.Println("Result: ", res[0].(*yystype).fval)
+		if yyparse(EOF, nextWord) {
+			fmt.Println("Result: ", yyres[0].(*yystype).fval)
 		} else {
 			fmt.Println("Can't parse that, dude.")
 		}
