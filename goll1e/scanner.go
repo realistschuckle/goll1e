@@ -48,8 +48,7 @@ func (self *scanner) nextWord() (word tok, err os.Error) {
 		if !unicode.IsSpace(r) || r == '\n' {break}
 		self.index += l;
 	}
-	j, ttype, inchar, incode, outcode := self.index, other, false, false, false
-	outcode = incode
+	j, ttype, inchar, incode := self.index, other, false, 0
 	for ; self.index < len(self.content); {
 		r, l := utf8.DecodeRune(self.content[self.index:])
 		if r == '\'' {inchar = !inchar}
@@ -67,19 +66,19 @@ func (self *scanner) nextWord() (word tok, err os.Error) {
 				ttype = enddef
 			case r == '|':
 				ttype = alternate
-			case r == '{':
-				incode = true
+			case r == '{' && memorizeTerms:
+				incode++
 				ttype = code
 			default:
 				ttype = term
 			}
-		} else if incode && r == '}' {
-			incode = false
-			outcode = true
+		} else if incode > 0 && r == '{' {
+			incode++
+		} else if incode > 0 && r == '}' {
+			incode--
 		}
-		if !incode && !inchar && unicode.IsSpace(r) {break}
+		if incode == 0 && !inchar && unicode.IsSpace(r) {break}
 		self.index += l
-		if outcode {break}
 	}
 	token := string(self.content[j:self.index])
 	if ttype == newline {token = ""}

@@ -4,6 +4,13 @@ import (
 	"fmt"
 )
 
+func printTypedEntries() {
+	for k, v := range typedEntries {
+		fmt.Println(k, "is a", v)
+	}
+	fmt.Print("\n")
+}
+
 func printSet(s map[int]*set, getName func(i int) string) {
 	for i := 0; i < len(s); i++ {
 		fmt.Print(getName(i), "[")

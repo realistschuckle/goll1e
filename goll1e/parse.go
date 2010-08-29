@@ -10,19 +10,52 @@ func parseHeader() {
 	for word, err := nextWord();
 		err == nil && word.text != "%%";
 		word, err = nextWord() {
-		switch word.text {
-		case "%package":
+		if word.ttype == newline {continue}
+		switch {
+		case word.text == "%package":
 			word, err = nextWord()
 			packageName = word.text
-		case "%import":
+		case word.text == "%union":
+			word, err = nextWord() // {
+			word, err = nextWord() // newline
+			parseUnionEntries()
+		case word.text == "%import":
 			for word, err := nextWord();
 				err == nil && word.ttype != newline;
 				word, err = nextWord() {
 				imports.Push(word.text)
 			}
+		case len(word.text) > 6 && word.text[0:5] == "%type":
+			parseTypedEntries(word.text[6:len(word.text) - 1])
+		case len(word.text) > 7 && word.text[0:6] == "%token":
+			parseTypedEntries(word.text[7:len(word.text) - 1])
+		default:
+			fmt.Println("Unrecognized header entry:",word.text)
 		}
 	}
 	memorizeTerms = true
+}
+
+func parseTypedEntries(etype string) {
+	for name, err := nextWord();
+		err == nil && name.ttype != newline;
+		name, err = nextWord() {
+		typedEntries[name.text] = etype
+	}
+}
+
+func parseUnionEntries() {
+	for name, err := nextWord();
+		err == nil && name.text != "}";
+		name, err = nextWord() {
+		etype := ""
+		for typespec, err := nextWord();
+			err == nil && typespec.ttype != newline;
+			typespec, err = nextWord() {
+			etype += typespec.text	
+		}
+		unionEntries[name.text] = etype
+	}
 }
 
 func parseProductions() {

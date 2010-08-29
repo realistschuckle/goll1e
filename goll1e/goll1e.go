@@ -6,6 +6,7 @@ import (
 	"os"
 	"container/vector"
 	"utf8"
+	"strings"
 )
 
 var dev bool
@@ -13,6 +14,8 @@ var dev bool
 var s scanner
 var terms map[string]int
 var nonterms map[string]int
+var unionEntries map[string]string
+var typedEntries map[string]string
 var prods vector.Vector
 var firsts map[int]*set
 var follows map[int]*set
@@ -27,6 +30,8 @@ func init() {
 	follows = make(map[int]*set)
 	terms = make(map[string]int)
 	nonterms = make(map[string]int)
+	unionEntries = make(map[string]string)
+	typedEntries = make(map[string]string)
 	terms[""] = 0
 }
 
@@ -102,6 +107,8 @@ func main() {
 
 		printTable()
 		printTableRaw()		
+		
+		printTypedEntries()
 	}
 	
 	printFile(out)
@@ -124,6 +131,16 @@ func printFile(out *os.File) {
 	}
 	out.WriteString(")\n\n")
 
+	out.WriteString("type yystype struct {\n")
+	for k, v := range unionEntries {
+		out.WriteString("\t")
+		out.WriteString(k)
+		out.WriteString(" ")
+		out.WriteString(v)
+		out.WriteString("\n")
+	}
+	out.WriteString("}\n")
+	
 	out.WriteString("var parseTable = [")
 	out.WriteString(fmt.Sprint(len(table)))
 	out.WriteString("][")
@@ -203,49 +220,113 @@ func printFile(out *os.File) {
 	}
 	out.WriteString("}\n")
 	
-	out.WriteString("func translateToken(t int, eof int) int {\n" +
+	out.WriteString("func runRule(i int, act *yystype) {\n")
+	out.WriteString("	switch i {\n")
+	for i, p := range prods {
+		prod := p.(*production)
+		if len(prod.code) == 0 {continue}
+		out.WriteString("	case ")
+		out.WriteString(fmt.Sprint(i))
+		out.WriteString(":\n")
+		code := strings.Replace(prod.code, "$$", "act." + typedEntries[prod.name], -1)
+		for i, t := range prod.seq {
+			d := i + 1
+			token := t.(tok)
+			switch token.ttype {
+			case term, nonterm:
+				ph := fmt.Sprintf("$%d", d)
+				suffix := typedEntries[token.text]
+				rep := fmt.Sprintf("res[len(res) - %d].(*yystype).%s", d, suffix)
+				code = strings.Replace(code, ph, rep, -1)
+			}
+		}
+		out.WriteString(code)
+		out.WriteString("\n")
+	}
+	out.WriteString("	}\n")
+	out.WriteString("}\n")
+	
+	out.WriteString("var res vector.Vector\n" +
+					"func translateToken(t int, eof int) int {\n" +
 					"	if t == eof {return 0}\n" +
 					"	if t >= MAXTOKEN {return t - MAXTOKEN - 1}\n" +
 					"	if t <= MINTOKEN {return charMap[t]}\n" +
 					"	return t - MINTOKEN\n" +
 					"}\n" +
-					"func parse(eof int, nextWord func()int) bool {\n" +
-					"	word := nextWord()\n" +
+					"func parse(eof int, nextWord func(v *yystype)int) (output bool) {\n" +
+					"	res.Resize(0, cap(res))\n" +
+					"	curyys := &yystype{}\n" +
+					"	var inputs vector.IntVector\n" +
+					"	var values vector.Vector\n" +
+					"	word := nextWord(curyys)\n" +
+					"	if(word > MINTOKEN && word < MAXTOKEN) {values.Push(curyys)}\n" +
+					"	curyys = &yystype{}\n" +
 					"	var stack vector.IntVector\n" +
 					"	stack.Push(eof)\n" +
+					"	stack.Push(0)\n" +
 					"	stack.Push(" + fmt.Sprint(maxToken + 1) + ")\n" +
 					"	tos := stack.Last()\n" +
-					"	for true {\n" +
-					// "		fmt.Println(\"WORD: \", word)\n" +
-					// "		fmt.Println(\"TOS:  \", tos)\n" +
-					// "		fmt.Println(\"STACK:\", stack)\n" +
-					"		if tos == eof && word == eof {return true}\n" +
+					"	for true {\n")
+	if dev {
+		out.WriteString("		fmt.Println(\"WORD: \", word)\n" +
+						"		fmt.Println(\"TOS:  \", tos)\n" +
+						"		fmt.Println(\"STACK:\", stack)\n")
+	}
+	out.WriteString("		if tos == eof && word == eof {output = true; break}\n" +
 					"		if (tos < MAXTOKEN) || tos == eof {\n" +
-					"			if tos == word {\n" +
+					"			if tos == word {\n")
+	if dev {
+		out.WriteString("				fmt.Println(\"Matched on terminal:\", word)\n")
+	}
+	out.WriteString("				inputs.Push(tos)\n" +
 					"				stack.Pop()\n" +
-					"				word = nextWord()\n" +
+					"				stack.Pop()\n" +
+					"				word = nextWord(curyys)\n" +
+					"				if(word > MINTOKEN && word < MAXTOKEN) {values.Push(curyys)}\n" +
+					"				curyys = &yystype{}\n" +
 					"				tos = stack.Last()\n" +
 					"			} else {break}\n" +
 					"		} else {\n" +
 					"			row, col := translateToken(tos, eof), translateToken(word, eof)\n" +
-					// "			fmt.Println(\"Row, Col:\", row, col)\n" +
-					"			if parseTable[row][col] == -1 {break}\n" +
-					"			stack.Pop()\n" +
 					"			ruleNumber := parseTable[row][col]\n" +
-					// "			fmt.Println(\"Row, Col:\", row, col)\n" +
-					// "			fmt.Println(\"Rule Number\", ruleNumber)\n" +
-					"			for i := len(parseProductions[ruleNumber]) - 1;\n" +
+					"			if ruleNumber == -1 {break /* Inform of error. */}\n" +
+					"			inputs.Push(ruleNumber + MAXTOKEN)\n" +
+					"			stack.Pop()\n" +
+					"			stack.Pop()\n")
+	if dev {
+		out.WriteString("			fmt.Println(\"Row, Col:\", row, col)\n" +
+						"			fmt.Println(\"Rule Number\", ruleNumber)\n")
+	}
+	out.WriteString("			for i := len(parseProductions[ruleNumber]) - 1;\n" +
 					"				i >= 0;\n" +
 					"				i-- {\n" +
+					"				stack.Push(-1)\n" +
 					"				stack.Push(parseProductions[ruleNumber][i])\n" +
 					"			}\n" +
 					"			tos = stack.Last()\n" +
 					"		}\n" +
+					"	}\n")
+	if dev {
+		out.WriteString("	fmt.Println(\"WORD: \", word)\n" +
+						"	fmt.Println(\"TOS:  \", tos)\n" +
+						"	fmt.Println(\"STACK:\", stack)\n")
+	}
+	out.WriteString("	if output {\n" +
+					"		for len(inputs) > 0 {\n" +
+					"			r := inputs.Pop()\n" +
+					"			if r < MINTOKEN {res.Push(nil); continue}\n" +
+					"			if r < MAXTOKEN {res.Push(values.Pop()); continue}\n" +
+					"			ruleNumber := r - MAXTOKEN\n" +
+					"			v := &yystype{}\n" +
+					"			runRule(ruleNumber, v)\n" +
+					"			numTokens := len(parseProductions[ruleNumber])\n" +
+					"			for i := 0; i < numTokens; i++ {\n" +
+					"				res.Pop()\n" +
+					"			}\n" +
+					"			res.Push(v)\n" +
+					"		}\n" +
 					"	}\n" +
-					// "	fmt.Println(\"WORD: \", word)\n" +
-					// "	fmt.Println(\"TOS:  \", tos)\n" +
-					// "	fmt.Println(\"STACK:\", stack)\n" +
-					"	return false\n" +
+					"	return\n" +
 					"}\n")
 	
 	out.WriteString("\n")
