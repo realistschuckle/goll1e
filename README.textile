@@ -35,7 +35,7 @@ test/test
 
 h1. How can I use it?
 
-Create a grammar file, run goll1e against it, and include that .go file in your project. The command syntax goes something like @goll1e input.y output.go@.
+Create a grammar file, run goll1e against it, and include that .go file in your project. The command syntax goes something like @goll1e input.y output.go@. Then, call the @parse(int, func(*yystype)int)bool@ function. It'll return @true@ if the parse succeeded and the result of your computations will exist in @res[0]@. Otherwise, you'll get a @false@ and junk will populate @res@.
 
 h1. Can I type to goll1e on stdin?
 
