@@ -313,10 +313,34 @@ func printFile(out *os.File) {
 	}
 	out.WriteString("	if output {\n" +
 					"		for len(inputs) > 0 {\n" +
-					"			r := inputs.Pop()\n" +
-					"			if r < MINTOKEN {res.Push(nil); continue}\n" +
-					"			if r < MAXTOKEN {res.Push(values.Pop()); continue}\n" +
-					"			ruleNumber := r - MAXTOKEN\n" +
+					"			r := inputs.Pop()\n")
+	if dev {
+		out.WriteString("			fmt.Println(\"Working result:\", r)\n")
+	}
+	out.WriteString("			if r < MINTOKEN {\n")
+	if dev {
+		out.WriteString("				fmt.Println(\"Result is literal. Pushing nil.\")\n")
+	}
+	out.WriteString("				res.Push(nil)\n" +
+					"				continue\n" +
+					"			}\n" +
+					"			if r < MAXTOKEN {\n" +
+					"				value := values.Pop()\n")
+	if dev {
+		out.WriteString("				fmt.Println(\"Result is token. Pushing\", value)\n")
+	}
+	out.WriteString("				res.Push(value)\n" +
+					"				continue\n" +
+					"			}\n")
+	if dev {
+		out.WriteString("			fmt.Println(\"Result is rule number\", r - MAXTOKEN)\n" +
+						"			fmt.Print(\"RES: \")\n" +
+						"			for _, v := range res {\n" +
+						"				fmt.Print(v, \" \")\n" +
+						"			}\n" +
+						"			fmt.Print(\"\\n\")\n")
+	}
+	out.WriteString("			ruleNumber := r - MAXTOKEN\n" +
 					"			v := &yystype{}\n" +
 					"			runRule(ruleNumber, v)\n" +
 					"			numTokens := len(parseProductions[ruleNumber])\n" +
