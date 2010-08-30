@@ -17,7 +17,9 @@ func computeTable() {
 		for _, c := range terms {
 			for prodidx, p := range prods {
 				prod := p.(*production)
-				if prod.name != nonterm {continue}
+				if prod.name != nonterm {
+					continue
+				}
 				switch {
 				case firsts[prodidx].IndexOf(c) > -1:
 					if table[r][c] != -1 {
@@ -40,7 +42,9 @@ func computeTable() {
 }
 
 func computeFollows() {
-	if len(nonterms) == 0 {return}
+	if len(nonterms) == 0 {
+		return
+	}
 	for i := 0; i < len(nonterms); i++ {
 		follows[i] = &set{}
 	}
@@ -51,9 +55,11 @@ func computeFollows() {
 			prod := p.(*production)
 			for sidx, s := range prod.seq {
 				word := s.(tok)
-				if word.ttype != nonterm {continue}
+				if word.ttype != nonterm {
+					continue
+				}
 				wordidx := nonterms[word.text]
-				after := prod.seq[sidx + 1:]
+				after := prod.seq[sidx+1:]
 				if len(after) == 0 {
 					fs := followsFor(prod.name)
 					changed = follows[wordidx].Union(fs.NoE()) || changed
@@ -61,7 +67,7 @@ func computeFollows() {
 				}
 				for seqidx, t := range after {
 					next := t.(tok)
-					last := seqidx == len(after) - 1
+					last := seqidx == len(after)-1
 					switch next.ttype {
 					case term:
 						changed = follows[wordidx].Push(terms[next.text]) || changed
@@ -69,17 +75,21 @@ func computeFollows() {
 					case nonterm:
 						fs := firstsFor(next.text)
 						changed = follows[wordidx].Union(fs.NoE()) || changed
-						if !fs.HasE() {goto NextItem}
+						if !fs.HasE() {
+							goto NextItem
+						}
 						if last {
 							fs = followsFor(prod.name)
 							changed = follows[wordidx].Union(fs.NoE()) || changed
 						}
 					}
 				}
-				NextItem:
+			NextItem:
 			}
 		}
-		if !changed {break}
+		if !changed {
+			break
+		}
 	}
 }
 
@@ -104,14 +114,18 @@ func computeFirsts() {
 				case nonterm:
 					fs := firstsFor(word.text)
 					changed = firsts[prodidx].Union(fs.NoE()) || changed
-					if !fs.HasE() {goto NextProd}
-					if wordidx == len(prod.seq) - 1 {
+					if !fs.HasE() {
+						goto NextProd
+					}
+					if wordidx == len(prod.seq)-1 {
 						changed = firsts[prodidx].Push(0) || changed
 					}
 				}
 			}
-			NextProd:
+		NextProd:
 		}
-		if !changed {break}
+		if !changed {
+			break
+		}
 	}
 }

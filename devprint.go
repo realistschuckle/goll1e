@@ -15,7 +15,9 @@ func printSet(s map[int]*set, getName func(i int) string) {
 	for i := 0; i < len(s); i++ {
 		fmt.Print(getName(i), "[")
 		for j, t := range *s[i] {
-			if j > 0 {fmt.Print(",")}
+			if j > 0 {
+				fmt.Print(",")
+			}
 			token := t.(int)
 			fmt.Print(translateTerm(token))
 		}
@@ -26,11 +28,17 @@ func printSet(s map[int]*set, getName func(i int) string) {
 
 func translateTerm(i int) (output string) {
 	output = "<NOT FOUND>"
-	if i == -1 {output = "$"}
+	if i == -1 {
+		output = "$"
+	}
 	for k, v := range terms {
-		if v != i {continue}
+		if v != i {
+			continue
+		}
 		output = k
-		if len(output) == 0 {output = "<E>"}
+		if len(output) == 0 {
+			output = "<E>"
+		}
 		break
 	}
 	return
@@ -39,7 +47,9 @@ func translateTerm(i int) (output string) {
 func translateNonterm(i int) (output string) {
 	output = "<NOT FOUND>"
 	for k, v := range nonterms {
-		if v != i {continue}
+		if v != i {
+			continue
+		}
 		output = k
 		break
 	}
@@ -50,7 +60,9 @@ func translateTerms(s *set) (output string) {
 	output = "["
 	for i, v := range *s {
 		token := v.(int)
-		if i > 0 {output += ","}
+		if i > 0 {
+			output += ","
+		}
 		output += translateTerm(token)
 	}
 	output += "]"

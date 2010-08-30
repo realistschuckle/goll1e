@@ -38,8 +38,8 @@ func init() {
 }
 
 type production struct {
-	name string	
-	seq vector.Vector
+	name string
+	seq  vector.Vector
 	code string
 }
 
@@ -47,7 +47,9 @@ func (self *production) String() (output string) {
 	output = self.name + "["
 	for i, w := range self.seq {
 		word := w.(tok)
-		if i > 0 {output += " "}
+		if i > 0 {
+			output += " "
+		}
 		output += word.text
 	}
 	output += "]"
@@ -60,8 +62,12 @@ func main() {
 	in, out := os.Stdin, os.Stdout
 	var err os.Error
 	defer func() {
-		if in != os.Stdin {in.Close()}
-		if out != os.Stdout {out.Close()}
+		if in != os.Stdin {
+			in.Close()
+		}
+		if out != os.Stdout {
+			out.Close()
+		}
 	}()
 
 	if len(os.Args) > 1 {
@@ -80,7 +86,7 @@ func main() {
 			os.Exit(-1)
 		}
 	}
-	
+
 	content, err := ioutil.ReadAll(in)
 	if nil != err {
 		fmt.Println("Cannot", err)
@@ -104,15 +110,15 @@ func main() {
 		printTermMap(nonterms)
 		printProductions()
 
-		printSet(firsts, func(i int) string {return prods[i].(*production).name})
-		printSet(follows, func(i int) string {return translateNonterm(i)})
+		printSet(firsts, func(i int) string { return prods[i].(*production).name })
+		printSet(follows, func(i int) string { return translateNonterm(i) })
 
 		printTable()
-		printTableRaw()		
-		
+		printTableRaw()
+
 		printTypedEntries()
 	}
-	
+
 	printFile(out)
 	out.Write(s.remainder())
 	out.WriteString("\n")
@@ -126,7 +132,9 @@ func printFile(out *os.File) {
 	out.WriteString("import (\n")
 	out.WriteString("\t\"container/vector\"\n")
 	for _, port := range imports {
-		if port == "container/vector" {continue}
+		if port == "container/vector" {
+			continue
+		}
 		out.WriteString("\t\"")
 		out.WriteString(port)
 		out.WriteString("\"\n")
@@ -142,7 +150,7 @@ func printFile(out *os.File) {
 		out.WriteString("\n")
 	}
 	out.WriteString("}\n")
-	
+
 	out.WriteString("var yytable = [")
 	out.WriteString(fmt.Sprint(len(table)))
 	out.WriteString("][")
@@ -159,13 +167,17 @@ func printFile(out *os.File) {
 		out.WriteString("},\n")
 	}
 	out.WriteString("}\n")
-	
+
 	maxChar := 0
 	out.WriteString("var yycharmap = map[int]int {\n")
 	for token, i := range terms {
-		if i == 0 || token[0] != '\'' {continue}
+		if i == 0 || token[0] != '\'' {
+			continue
+		}
 		char, _ := utf8.DecodeRuneInString(token[1:])
-		if char > maxChar {maxChar = char}
+		if char > maxChar {
+			maxChar = char
+		}
 		out.WriteString("\t")
 		out.WriteString(token)
 		out.WriteString(":")
@@ -173,7 +185,7 @@ func printFile(out *os.File) {
 		out.WriteString(",\n")
 	}
 	out.WriteString("}\n")
-	
+
 	maxChar++
 	maxToken := maxChar + len(terms) + 1
 	out.WriteString("const (\n")
@@ -181,7 +193,9 @@ func printFile(out *os.File) {
 	out.WriteString(fmt.Sprint(maxChar))
 	out.WriteString("\n")
 	for token, i := range terms {
-		if i == 0 || token[0] == '\'' {continue}
+		if i == 0 || token[0] == '\'' {
+			continue
+		}
 		out.WriteString("\t")
 		out.WriteString(token)
 		out.WriteString(" = ")
@@ -195,7 +209,7 @@ func printFile(out *os.File) {
 	out.WriteString(fmt.Sprint(maxToken + len(prods) + 1))
 	out.WriteString("\n")
 	out.WriteString(")\n")
-	
+
 	out.WriteString("var yyprods = [")
 	out.WriteString(fmt.Sprint(len(prods)))
 	out.WriteString("][]int {\n")
@@ -221,16 +235,18 @@ func printFile(out *os.File) {
 		out.WriteString("},\n")
 	}
 	out.WriteString("}\n")
-	
+
 	out.WriteString("func yyrunrule(i int, act *yystype, yyres vector.Vector) {\n")
 	out.WriteString("	switch i {\n")
 	for i, p := range prods {
 		prod := p.(*production)
-		if len(prod.code) == 0 {continue}
+		if len(prod.code) == 0 {
+			continue
+		}
 		out.WriteString("	case ")
 		out.WriteString(fmt.Sprint(i))
 		out.WriteString(":\n")
-		code := strings.Replace(prod.code, "$$", "act." + typedEntries[prod.name], -1)
+		code := strings.Replace(prod.code, "$$", "act."+typedEntries[prod.name], -1)
 		for i, t := range prod.seq {
 			d := i + 1
 			token := t.(tok)
@@ -247,76 +263,76 @@ func printFile(out *os.File) {
 	}
 	out.WriteString("	}\n")
 	out.WriteString("}\n")
-	
+
 	outputType := unionEntries[typedEntries[translateNonterm(0)]]
-	
+
 	out.WriteString("func yytranslate(t int, eof int) int {\n" +
-					"	if t == eof {return 0}\n" +
-					"	if t >= yyMAXTOKEN {return t - yyMAXTOKEN - 1}\n" +
-					"	if t <= yyMINTOKEN {return yycharmap[t]}\n" +
-					"	return t - yyMINTOKEN\n" +
-					"}\n" +
-					"func yyparse(eof int, nextWord func(v *yystype)int) (output bool, result " + outputType + ") {\n" +
-					"	curyys := &yystype{}\n" +
-					"	var yyres vector.Vector\n" +
-					"	var inputs vector.IntVector\n" +
-					"	var values vector.Vector\n" +
-					"	word := nextWord(curyys)\n" +
-					"	if(word > yyMINTOKEN && word < yyMAXTOKEN) {values.Push(curyys)}\n" +
-					"	curyys = &yystype{}\n" +
-					"	var stack vector.IntVector\n" +
-					"	stack.Push(eof)\n" +
-					"	stack.Push(0)\n" +
-					"	stack.Push(" + fmt.Sprint(maxToken + 1) + ")\n" +
-					"	tos := stack.Last()\n" +
-					"	for true {\n")
+		"	if t == eof {return 0}\n" +
+		"	if t >= yyMAXTOKEN {return t - yyMAXTOKEN - 1}\n" +
+		"	if t <= yyMINTOKEN {return yycharmap[t]}\n" +
+		"	return t - yyMINTOKEN\n" +
+		"}\n" +
+		"func yyparse(eof int, nextWord func(v *yystype)int) (output bool, result " + outputType + ") {\n" +
+		"	curyys := &yystype{}\n" +
+		"	var yyres vector.Vector\n" +
+		"	var inputs vector.IntVector\n" +
+		"	var values vector.Vector\n" +
+		"	word := nextWord(curyys)\n" +
+		"	if(word > yyMINTOKEN && word < yyMAXTOKEN) {values.Push(curyys)}\n" +
+		"	curyys = &yystype{}\n" +
+		"	var stack vector.IntVector\n" +
+		"	stack.Push(eof)\n" +
+		"	stack.Push(0)\n" +
+		"	stack.Push(" + fmt.Sprint(maxToken+1) + ")\n" +
+		"	tos := stack.Last()\n" +
+		"	for true {\n")
 	if dev {
 		out.WriteString("		fmt.Println(\"WORD: \", word)\n" +
-						"		fmt.Println(\"TOS:  \", tos)\n" +
-						"		fmt.Println(\"STACK:\", stack)\n")
+			"		fmt.Println(\"TOS:  \", tos)\n" +
+			"		fmt.Println(\"STACK:\", stack)\n")
 	}
 	out.WriteString("		if tos == eof && word == eof {output = true; break}\n" +
-					"		if (tos < yyMAXTOKEN) || tos == eof {\n" +
-					"			if tos == word {\n")
+		"		if (tos < yyMAXTOKEN) || tos == eof {\n" +
+		"			if tos == word {\n")
 	if dev {
 		out.WriteString("				fmt.Println(\"Matched on terminal:\", word)\n")
 	}
 	out.WriteString("				inputs.Push(tos)\n" +
-					"				stack.Pop()\n" +
-					"				stack.Pop()\n" +
-					"				word = nextWord(curyys)\n" +
-					"				if(word > yyMINTOKEN && word < yyMAXTOKEN) {values.Push(curyys)}\n" +
-					"				curyys = &yystype{}\n" +
-					"				tos = stack.Last()\n" +
-					"			} else {break}\n" +
-					"		} else {\n" +
-					"			row, col := yytranslate(tos, eof), yytranslate(word, eof)\n" +
-					"			ruleNumber := yytable[row][col]\n" +
-					"			if ruleNumber == -1 {break /* Inform of error. */}\n" +
-					"			inputs.Push(ruleNumber + yyMAXTOKEN)\n" +
-					"			stack.Pop()\n" +
-					"			stack.Pop()\n")
+		"				stack.Pop()\n" +
+		"				stack.Pop()\n" +
+		"				word = nextWord(curyys)\n" +
+		"				if(word > yyMINTOKEN && word < yyMAXTOKEN) {values.Push(curyys)}\n" +
+		"				curyys = &yystype{}\n" +
+		"				tos = stack.Last()\n" +
+		"			} else {break}\n" +
+		"		} else {\n" +
+		"			row, col := yytranslate(tos, eof), yytranslate(word, eof)\n" +
+		"			ruleNumber := yytable[row][col]\n" +
+		"			if ruleNumber == -1 {break /* Inform of error. */}\n" +
+		"			inputs.Push(ruleNumber + yyMAXTOKEN)\n" +
+		"			stack.Pop()\n" +
+		"			stack.Pop()\n")
 	if dev {
 		out.WriteString("			fmt.Println(\"Row, Col:\", row, col)\n" +
-						"			fmt.Println(\"Rule Number\", ruleNumber)\n")
+			"			fmt.Println(\"Rule Number\", ruleNumber)\n")
 	}
 	out.WriteString("			for i := len(yyprods[ruleNumber]) - 1;\n" +
-					"				i >= 0;\n" +
-					"				i-- {\n" +
-					"				stack.Push(-1)\n" +
-					"				stack.Push(yyprods[ruleNumber][i])\n" +
-					"			}\n" +
-					"			tos = stack.Last()\n" +
-					"		}\n" +
-					"	}\n")
+		"				i >= 0;\n" +
+		"				i-- {\n" +
+		"				stack.Push(-1)\n" +
+		"				stack.Push(yyprods[ruleNumber][i])\n" +
+		"			}\n" +
+		"			tos = stack.Last()\n" +
+		"		}\n" +
+		"	}\n")
 	if dev {
 		out.WriteString("	fmt.Println(\"WORD: \", word)\n" +
-						"	fmt.Println(\"TOS:  \", tos)\n" +
-						"	fmt.Println(\"STACK:\", stack)\n")
+			"	fmt.Println(\"TOS:  \", tos)\n" +
+			"	fmt.Println(\"STACK:\", stack)\n")
 	}
 	out.WriteString("	if output {\n" +
-					"		for len(inputs) > 0 {\n" +
-					"			r := inputs.Pop()\n")
+		"		for len(inputs) > 0 {\n" +
+		"			r := inputs.Pop()\n")
 	if dev {
 		out.WriteString("			fmt.Println(\"Working result:\", r)\n")
 	}
@@ -325,37 +341,37 @@ func printFile(out *os.File) {
 		out.WriteString("				fmt.Println(\"Result is literal. Pushing nil.\")\n")
 	}
 	out.WriteString("				yyres.Push(nil)\n" +
-					"				continue\n" +
-					"			}\n" +
-					"			if r < yyMAXTOKEN {\n" +
-					"				value := values.Pop()\n")
+		"				continue\n" +
+		"			}\n" +
+		"			if r < yyMAXTOKEN {\n" +
+		"				value := values.Pop()\n")
 	if dev {
 		out.WriteString("				fmt.Println(\"Result is token. Pushing\", value)\n")
 	}
 	out.WriteString("				yyres.Push(value)\n" +
-					"				continue\n" +
-					"			}\n")
+		"				continue\n" +
+		"			}\n")
 	if dev {
 		out.WriteString("			fmt.Println(\"Result is rule number\", r - yyMAXTOKEN)\n" +
-						"			fmt.Print(\"RES: \")\n" +
-						"			for _, v := range yyres {\n" +
-						"				fmt.Print(v, \" \")\n" +
-						"			}\n" +
-						"			fmt.Print(\"\\n\")\n")
+			"			fmt.Print(\"RES: \")\n" +
+			"			for _, v := range yyres {\n" +
+			"				fmt.Print(v, \" \")\n" +
+			"			}\n" +
+			"			fmt.Print(\"\\n\")\n")
 	}
 	out.WriteString("			ruleNumber := r - yyMAXTOKEN\n" +
-					"			v := &yystype{}\n" +
-					"			yyrunrule(ruleNumber, v, yyres)\n" +
-					"			numTokens := len(yyprods[ruleNumber])\n" +
-					"			for i := 0; i < numTokens; i++ {\n" +
-					"				yyres.Pop()\n" +
-					"			}\n" +
-					"			yyres.Push(v)\n" +
-					"		}\n" +
-					"		result = yyres[0].(*yystype)."+ typedEntries[translateNonterm(0)] + "\n" +
-					"	}\n" +
-					"	return\n" +
-					"}\n")
-	
+		"			v := &yystype{}\n" +
+		"			yyrunrule(ruleNumber, v, yyres)\n" +
+		"			numTokens := len(yyprods[ruleNumber])\n" +
+		"			for i := 0; i < numTokens; i++ {\n" +
+		"				yyres.Pop()\n" +
+		"			}\n" +
+		"			yyres.Push(v)\n" +
+		"		}\n" +
+		"		result = yyres[0].(*yystype)." + typedEntries[translateNonterm(0)] + "\n" +
+		"	}\n" +
+		"	return\n" +
+		"}\n")
+
 	out.WriteString("\n")
 }

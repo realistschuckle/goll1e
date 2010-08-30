@@ -7,10 +7,10 @@ import (
 )
 
 func parseHeader() {
-	for word, err := nextWord();
-		err == nil && word.text != "%%";
-		word, err = nextWord() {
-		if word.ttype == newline {continue}
+	for word, err := nextWord(); err == nil && word.text != "%%"; word, err = nextWord() {
+		if word.ttype == newline {
+			continue
+		}
 		switch {
 		case word.text == "%dev":
 			dev = true
@@ -22,54 +22,46 @@ func parseHeader() {
 			word, err = nextWord() // newline
 			parseUnionEntries()
 		case word.text == "%import":
-			for word, err := nextWord();
-				err == nil && word.ttype != newline;
-				word, err = nextWord() {
+			for word, err := nextWord(); err == nil && word.ttype != newline; word, err = nextWord() {
 				imports.Push(word.text)
 			}
 		case len(word.text) > 6 && word.text[0:5] == "%type":
-			parseTypedEntries(word.text[6:len(word.text) - 1])
+			parseTypedEntries(word.text[6 : len(word.text)-1])
 		case len(word.text) > 7 && word.text[0:6] == "%token":
-			parseTypedEntries(word.text[7:len(word.text) - 1])
+			parseTypedEntries(word.text[7 : len(word.text)-1])
 		case word.text == "%defaultcode":
 			memorizeTerms = true
 			code, _ := nextWord()
 			defaultcode = code.text
 			memorizeTerms = false
 		default:
-			fmt.Println("Unrecognized header entry:",word.text)
+			fmt.Println("Unrecognized header entry:", word.text)
 		}
 	}
 	memorizeTerms = true
 }
 
 func parseTypedEntries(etype string) {
-	for name, err := nextWord();
-		err == nil && name.ttype != newline;
-		name, err = nextWord() {
+	for name, err := nextWord(); err == nil && name.ttype != newline; name, err = nextWord() {
 		typedEntries[name.text] = etype
 	}
 }
 
 func parseUnionEntries() {
-	for name, err := nextWord();
-		err == nil && name.text != "}";
-		name, err = nextWord() {
+	for name, err := nextWord(); err == nil && name.text != "}"; name, err = nextWord() {
 		etype := ""
-		for typespec, err := nextWord();
-			err == nil && typespec.ttype != newline;
-			typespec, err = nextWord() {
-			etype += typespec.text	
+		for typespec, err := nextWord(); err == nil && typespec.ttype != newline; typespec, err = nextWord() {
+			etype += typespec.text
 		}
 		unionEntries[name.text] = etype
 	}
 }
 
 func parseProductions() {
-	for word, err := nextWord();
-		err == nil && word.text != "%%";
-		word, err = nextWord() {
-		if word.ttype == newline {continue}
+	for word, err := nextWord(); err == nil && word.text != "%%"; word, err = nextWord() {
+		if word.ttype == newline {
+			continue
+		}
 		if word.ttype != nonterm {
 			fmt.Println("Expected non-terminal but got", word.text)
 			return
@@ -95,10 +87,8 @@ func parseProductions() {
 }
 
 func parseProduction(prod *production) {
-	for word, err := nextWord();
-		err == nil && word.ttype != enddef;
-		word, err = nextWord() {
-		HandleProductionToken:
+	for word, err := nextWord(); err == nil && word.ttype != enddef; word, err = nextWord() {
+	HandleProductionToken:
 		switch word.ttype {
 		case code:
 			prod.code = word.text
@@ -121,15 +111,17 @@ func nextWord() (word tok, err os.Error) {
 	if word.text == "#" {
 		for true {
 			word, err = s.nextWord()
-			if word.ttype == newline {break}
+			if word.ttype == newline {
+				break
+			}
 		}
 	}
 	if memorizeTerms {
 		switch word.ttype {
 		case term:
-		if _, ok := terms[word.text]; !ok {
-			terms[word.text] = len(terms)
-		}
+			if _, ok := terms[word.text]; !ok {
+				terms[word.text] = len(terms)
+			}
 		case nonterm:
 			if _, ok := nonterms[word.text]; !ok {
 				nonterms[word.text] = len(nonterms)
@@ -143,7 +135,9 @@ func firstsFor(name string) (output *set) {
 	output = &set{}
 	for i, p := range prods {
 		prod := p.(*production)
-		if prod.name == name {output.Union(firsts[i])}
+		if prod.name == name {
+			output.Union(firsts[i])
+		}
 	}
 	return
 }
