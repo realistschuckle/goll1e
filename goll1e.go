@@ -7,6 +7,7 @@ import (
 	"container/vector"
 	"utf8"
 	"strings"
+	"flag"
 )
 
 var dev bool
@@ -58,6 +59,14 @@ func (self *production) String() (output string) {
 }
 
 func main() {
+	var help bool
+	flag.BoolVar(&dev, "dev", false, "include grammar developer output during parser generation and input parsing")
+	flag.BoolVar(&help, "help", false, "show this message")
+	flag.Parse()
+	if help {
+		flag.Usage()
+		os.Exit(0)
+	}
 	filename := "stdin"
 	in, out := os.Stdin, os.Stdout
 	var err os.Error
@@ -70,17 +79,17 @@ func main() {
 		}
 	}()
 
-	if len(os.Args) > 1 {
-		filename = os.Args[1]
+	if flag.NArg() > 0 {
+		filename = flag.Arg(0)
 		in, err = os.Open(filename, os.O_RDONLY, 0)
 		if nil != err {
 			fmt.Println("Cannot", err)
 			os.Exit(-1)
 		}
 	}
-	if len(os.Args) > 2 {
+	if flag.NArg() > 1 {
 		flags := os.O_CREATE | os.O_WRONLY | os.O_TRUNC
-		out, err = os.Open(os.Args[2], flags, 0666)
+		out, err = os.Open(flag.Arg(1), flags, 0666)
 		if nil != err {
 			fmt.Println("Cannot create output file", os.Args[2], ":", err)
 			os.Exit(-1)

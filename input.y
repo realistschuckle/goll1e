@@ -58,12 +58,12 @@ Num : floating
 
 %%
 
-# Define the end-of-file token used by the scanner
+// Define the end-of-file token used by the scanner
 const (
 	EOF = yyUSER + 1
 )
 
-# Define functions used by the grammar above
+// Define functions used by the grammar above
 func mult(m float) func(float)float {
 	return func(f float)float {
 		return f * m
@@ -92,27 +92,27 @@ func noop(m float) float {
 	return m
 }
 
-# Entry point for executable
+// Entry point for executable
 func main() {
 	reader := os.Stdin
 	for true {
 		var s scanner.Scanner
 		s.Init(reader)
 		
-		# Define a scanner function for the yyparse function
+		// Define a scanner function for the yyparse function
 		nextWord := func(v *yystype)int {
 			i := s.Scan()
 			switch i {
 			case scanner.Float:
-				# Set the value of the string conversion to the float slot
+				// Set the value of the string conversion to the float slot
 				v.fval, _ = strconv.Atof(s.TokenText())
 				return floating
 			case scanner.Int:
-				# Set the value of the string conversion to the int slot
+				// Set the value of the string conversion to the int slot
 				v.ival, _ = strconv.Atoi(s.TokenText())
 				return integer
 			case scanner.Ident:
-				# Return EOF for the token "eof"
+				// Return EOF for the token "eof"
 				if s.TokenText() == "eof" {return EOF}
 				return -1
 			case scanner.String:
@@ -131,8 +131,8 @@ func main() {
 			return -1
 		}
 		
-		# Print the result if the parser recognized the input
-		# Otherwise, print a colloquial but unhelpful message
+		// Print the result if the parser recognized the input
+		// Otherwise, print a colloquial but unhelpful message
 		if ok, result := yyparse(EOF, nextWord); ok {
 			fmt.Println("Result:", result)
 		} else {
