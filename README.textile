@@ -19,11 +19,21 @@ For a first draft, yes, I think so. Features include:
 
 h1. How can I install this?
 
+Just follow the simple directions from the command line.
+
+goinstall "github.com/realistschuckle/goll1e"
+pushd $GOROOT/src/pkg/github.com/realistschuckle/goll1e/
+make install
+popd
+
+h1. Thanks. That was fun. How can I uninstall this?
+
 Just follow the simple directions from the command line:
 
-pre. git clone git://github.com/realistschuckle/goll1e.git goll1e
-cd goll1e
-make install
+pushd $GOROOT/src/pkg/github.com/realistschuckle/goll1e/
+make nuke
+popd
+rm -rf $GOROOT/src/pkg/github.com/realistschuckle/goll1e/
 
 h1. How can I test this out?
 
