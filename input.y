@@ -52,7 +52,7 @@ AddA : '+' Add          { fmt.Println("6. Found AddA->'+' Add"); $$ = plus($2) }
      |                  { fmt.Println("8. Found AddA->{}"); $$ = noop}
      ;
 
-Num : floating
+Num : floating          { fmt.Println("9. Found Num->floating. Forwarding value", $1); $$ = float($1) }
     | integer           { fmt.Println("10. Found Num->integer. Forwarding value", $1); $$ = float($1) }
     ;
 
