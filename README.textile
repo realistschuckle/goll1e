@@ -26,6 +26,12 @@ pushd $GOROOT/src/pkg/github.com/realistschuckle/goll1e/
 make install
 popd
 
+h1. HEY! Your this doesn't build! What's wrong with you?
+
+Ok, the release and master branches contain code that compiles against the latest documented release of Go. Sometimes, those
+awesome and crazy Go guys change the cr4p out of the API and that breaks goll1e. Try switching over to the @preview@ branch
+and compiling that one. I try to keep it up to date with breaking changes to Go.
+
 h1. Thanks. That was fun. How can I uninstall this?
 
 Just follow the simple directions from the command line:
