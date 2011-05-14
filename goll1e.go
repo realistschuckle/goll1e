@@ -81,7 +81,7 @@ func main() {
 
 	if flag.NArg() > 0 {
 		filename = flag.Arg(0)
-		in, err = os.Open(filename, os.O_RDONLY, 0)
+		in, err = os.OpenFile(filename, os.O_RDONLY, 0)
 		if nil != err {
 			fmt.Println("Cannot", err)
 			os.Exit(-1)
@@ -126,7 +126,7 @@ func main() {
 
 	if flag.NArg() > 1 {
 		flags := os.O_CREATE | os.O_WRONLY | os.O_TRUNC
-		out, err = os.Open(flag.Arg(1), flags, 0666)
+		out, err = os.OpenFile(flag.Arg(1), flags, 0666)
 		if nil != err {
 			fmt.Println("Cannot create output file", os.Args[2], ":", err)
 			os.Exit(-1)
