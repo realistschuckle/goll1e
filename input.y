@@ -19,8 +19,8 @@
     op func(float64)float64
 }
 
-# Associate the "float64ing" terminal with the type of fval float64
-%token<fval> float64ing
+# Associate the "floating" terminal with the type of fval float64
+%token<fval> floating
 
 # Associate the "integer" terminal with the type of ival int
 %token<ival> integer
@@ -52,7 +52,7 @@ AddA : '+' Add          { fmt.Println("6. Found AddA->'+' Add"); $$ = plus($2) }
      |                  { fmt.Println("8. Found AddA->{}"); $$ = noop}
      ;
 
-Num : float64ing          { fmt.Println("9. Found Num->float64ing. Forwarding value", $1); $$ = float64($1) }
+Num : floating          { fmt.Println("9. Found Num->floating. Forwarding value", $1); $$ = float64($1) }
     | integer           { fmt.Println("10. Found Num->integer. Forwarding value", $1); $$ = float64($1) }
     ;
 
@@ -106,7 +106,7 @@ func main() {
             case scanner.Float:
                 // Set the value of the string conversion to the float64 slot
                 v.fval, _ = strconv.Atof64(s.TokenText())
-                return float64ing
+                return floating
             case scanner.Int:
                 // Set the value of the string conversion to the int slot
                 v.ival, _ = strconv.Atoi(s.TokenText())
