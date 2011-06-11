@@ -14,21 +14,21 @@
 
 # Define the custom value type for tokens
 %union {
-    fval float
+    fval float64
     ival int
-    op func(float)float
+    op func(float64)float64
 }
 
-# Associate the "floating" terminal with the type of fval float
-%token<fval> floating
+# Associate the "float64ing" terminal with the type of fval float64
+%token<fval> float64ing
 
 # Associate the "integer" terminal with the type of ival int
 %token<ival> integer
 
-# Associate the "Calc", "Num", "Mult", and "Add" nonterminals with the type of fval float 
+# Associate the "Calc", "Num", "Mult", and "Add" nonterminals with the type of fval float64 
 %type<fval> Calc Num Mult Add
 
-# Associate the "MultA" and "AddA" nonterminals with the type of op func(float)float
+# Associate the "MultA" and "AddA" nonterminals with the type of op func(float64)float64
 %type<op> MultA AddA
 
 %%
@@ -52,8 +52,8 @@ AddA : '+' Add          { fmt.Println("6. Found AddA->'+' Add"); $$ = plus($2) }
      |                  { fmt.Println("8. Found AddA->{}"); $$ = noop}
      ;
 
-Num : floating          { fmt.Println("9. Found Num->floating. Forwarding value", $1); $$ = float($1) }
-    | integer           { fmt.Println("10. Found Num->integer. Forwarding value", $1); $$ = float($1) }
+Num : float64ing          { fmt.Println("9. Found Num->float64ing. Forwarding value", $1); $$ = float64($1) }
+    | integer           { fmt.Println("10. Found Num->integer. Forwarding value", $1); $$ = float64($1) }
     ;
 
 %%
@@ -64,31 +64,31 @@ const (
 )
 
 // Define functions used by the grammar above
-func mult(m float) func(float)float {
-    return func(f float)float {
+func mult(m float64) func(float64)float64 {
+    return func(f float64)float64 {
         return f * m
     }
 }
 
-func div(m float) func(float)float {
-    return func(f float)float {
+func div(m float64) func(float64)float64 {
+    return func(f float64)float64 {
         return f / m
     }
 }
 
-func plus(m float) func(float)float {
-    return func(f float)float {
+func plus(m float64) func(float64)float64 {
+    return func(f float64)float64 {
         return f + m
     }
 }
 
-func minus(m float) func(float)float {
-    return func(f float)float {
+func minus(m float64) func(float64)float64 {
+    return func(f float64)float64 {
         return f - m
     }
 }
 
-func noop(m float) float {
+func noop(m float64) float64 {
     return m
 }
 
@@ -104,9 +104,9 @@ func main() {
             i := s.Scan()
             switch i {
             case scanner.Float:
-                // Set the value of the string conversion to the float slot
-                v.fval, _ = strconv.Atof(s.TokenText())
-                return floating
+                // Set the value of the string conversion to the float64 slot
+                v.fval, _ = strconv.Atof64(s.TokenText())
+                return float64ing
             case scanner.Int:
                 // Set the value of the string conversion to the int slot
                 v.ival, _ = strconv.Atoi(s.TokenText())
