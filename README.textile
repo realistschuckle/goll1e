@@ -6,7 +6,7 @@ You can find out more about GO at "golang.org":http://golang.org
 
 Check out the "wiki":http://wiki.github.com/realistschuckle/goll1e/ for information on the input grammar, the generated file structure, and other stufff (but not much other stuff).
 
-This branch compiles with 6g/8g version weekly.2011-05-22 8483.
+This branch compiles with 6g/8g version weekly.2011-06-09 8703.
 
 h1. Is it done?
 
