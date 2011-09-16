@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style
 # license that can be found in the LICENSE file.
 
-include Make.$(GOARCH)
+include $(GOROOT)/src/Make.inc
 
 TARG=goll1e
 GOFILES=\
@@ -13,4 +13,4 @@ GOFILES=\
 	devprint.go\
 	parse.go\
 
-include Make.cmd
+include $(GOROOT)/src/Make.pkg
